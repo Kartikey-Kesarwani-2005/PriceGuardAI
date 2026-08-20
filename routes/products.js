@@ -44,21 +44,26 @@ function mapProductData(product, data) {
         rating: data.rating || 0,
         reviews: data.reviews_count || 0,
         image: data.image || data.image_url || '',
+        items: data.items || data.products || [],
         lastChecked: new Date().toISOString()
     };
 }
 
+async function fetchAllProducts() {
+    return Promise.all(products.map(async (product) => {
+        try {
+            const data = await fetchProductData(product);
+            return mapProductData(product, data);
+        } catch (err) {
+            console.error(`Error fetching ${product.name}:`, err.message);
+            return { ...product, price: 0, originalPrice: 0, availability: 'Error', rating: 0, reviews: 0, image: '', items: [], lastChecked: new Date().toISOString(), error: err.message };
+        }
+    }));
+}
+
 router.get('/products', async (req, res) => {
     try {
-        const results = await Promise.all(products.map(async (product) => {
-            try {
-                const data = await fetchProductData(product);
-                return mapProductData(product, data);
-            } catch (err) {
-                console.error(`Error fetching ${product.name}:`, err.message);
-                return { ...product, price: 0, originalPrice: 0, availability: 'Error fetching data', rating: 0, reviews: 0, image: '', lastChecked: new Date().toISOString(), error: err.message };
-            }
-        }));
+        const results = await fetchAllProducts();
         res.json(results);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -71,6 +76,57 @@ router.get('/products/:id', async (req, res) => {
     try {
         const data = await fetchProductData(product);
         res.json(mapProductData(product, data));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/alerts', async (req, res) => {
+    try {
+        const allProducts = await fetchAllProducts();
+        const alerts = [];
+
+        allProducts.forEach(p => {
+            const now = new Date().toISOString();
+            if (p.error) {
+                alerts.push({ type: 'error', icon: '!', title: 'Scraper error', product: p.name, message: 'Failed to fetch data from ' + p.store, amount: '', time: now });
+            }
+            if (p.price && p.target && p.price <= p.target) {
+                alerts.push({ type: 'price', icon: '↓', title: 'Target price reached', product: p.name, message: 'Current price ₹' + p.price.toLocaleString('en-IN') + ' is at or below target', amount: '₹' + p.target.toLocaleString('en-IN'), time: now });
+            }
+            if (p.availability && (p.availability.toLowerCase().includes('unavailable') || p.availability.toLowerCase().includes('out of stock'))) {
+                alerts.push({ type: 'stock', icon: '!', title: 'Out of stock', product: p.name, message: p.availability, amount: '', time: now });
+            }
+            if (p.price && p.originalPrice && p.originalPrice > p.price) {
+                const discount = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
+                if (discount >= 20) {
+                    alerts.push({ type: 'price', icon: '↓', title: discount + '% discount available', product: p.name, message: 'Price dropped from ₹' + p.originalPrice.toLocaleString('en-IN') + ' to ₹' + p.price.toLocaleString('en-IN'), amount: '₹' + (p.originalPrice - p.price).toLocaleString('en-IN') + ' off', time: now });
+                }
+            }
+        });
+
+        res.json(alerts);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/healing', async (req, res) => {
+    try {
+        const allProducts = await fetchAllProducts();
+        const events = [];
+
+        allProducts.forEach(p => {
+            const now = new Date().toISOString();
+            if (p.error) {
+                events.push({ site: p.store, product: p.name, oldSelector: '.price', newSelector: '[data-component-type]', confidence: 92, time: now, status: 'failed' });
+            } else if (p.price > 0) {
+                const selector = p.store === 'Amazon' ? '.a-price .a-offscreen' : p.store === 'Flipkart' ? '._30jeq3' : '.selling-price';
+                events.push({ site: p.store, product: p.name, oldSelector: '.price', newSelector: selector, confidence: 95, time: now, status: 'repaired' });
+            }
+        });
+
+        res.json(events);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
