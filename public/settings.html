@@ -11,15 +11,11 @@
 
     <script src="js/components/layout.js"></script>
     <script>
-        document.getElementById('app').innerHTML = Layout.renderPage('settings', 'Settings', 'Configure monitoring and self-healing behaviour.', `
+        document.getElementById('app').innerHTML = Layout.renderPage('settings', 'Settings', 'Configure monitoring and notification preferences.', `
             <div class="settings-card">
                 <div class="setting-row">
                     <div><h3>Continuous monitoring</h3><p>Periodically check monitored products for changes.</p></div>
                     <button class="toggle toggle-on" data-setting="monitoring"><span></span></button>
-                </div>
-                <div class="setting-row">
-                    <div><h3>AI self-healing</h3><p>Automatically repair broken selectors.</p></div>
-                    <button class="toggle toggle-on" data-setting="healing"><span></span></button>
                 </div>
                 <div class="setting-row">
                     <div><h3>Price notifications</h3><p>Notify when products reach target prices.</p></div>

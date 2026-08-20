@@ -22,17 +22,6 @@ async function fetchAlerts() {
     }
 }
 
-async function fetchHealing() {
-    try {
-        const response = await fetch(`${API_BASE}/api/healing`);
-        if (!response.ok) throw new Error('Failed to fetch healing events');
-        return await response.json();
-    } catch (err) {
-        console.error('Error fetching healing:', err);
-        return [];
-    }
-}
-
 function formatPrice(price) {
     return price ? `₹${price.toLocaleString('en-IN')}` : '₹N/A';
 }

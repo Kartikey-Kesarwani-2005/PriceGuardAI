@@ -111,25 +111,4 @@ router.get('/alerts', async (req, res) => {
     }
 });
 
-router.get('/healing', async (req, res) => {
-    try {
-        const allProducts = await fetchAllProducts();
-        const events = [];
-
-        allProducts.forEach(p => {
-            const now = new Date().toISOString();
-            if (p.error) {
-                events.push({ site: p.store, product: p.name, oldSelector: '.price', newSelector: '[data-component-type]', confidence: 92, time: now, status: 'failed' });
-            } else if (p.price > 0) {
-                const selector = p.store === 'Amazon' ? '.a-price .a-offscreen' : p.store === 'Flipkart' ? '._30jeq3' : '.selling-price';
-                events.push({ site: p.store, product: p.name, oldSelector: '.price', newSelector: selector, confidence: 95, time: now, status: 'repaired' });
-            }
-        });
-
-        res.json(events);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 module.exports = router;

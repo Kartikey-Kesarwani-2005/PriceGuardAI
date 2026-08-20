@@ -3,7 +3,6 @@ const Layout = {
         { href: 'index.html', icon: '▦', label: 'Dashboard', id: 'dashboard' },
         { href: 'products.html', icon: '□', label: 'Products', id: 'products' },
         { href: 'scrapers.html', icon: '◉', label: 'Scraper Health', id: 'scrapers' },
-        { href: 'healing.html', icon: '✦', label: 'AI Healing', id: 'healing' },
         { href: 'alerts.html', icon: '♢', label: 'Alerts', id: 'alerts' },
         { href: 'settings.html', icon: '⚙', label: 'Settings', id: 'settings' }
     ],

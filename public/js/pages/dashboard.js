@@ -26,9 +26,6 @@ function updateStats(products) {
     const hs = el('healthyScrapers');
     if (hs) hs.textContent = products.filter(p => getHealthStatus(p) === 'Healthy').length;
 
-    const sh = el('selfHealed');
-    if (sh) sh.textContent = '0';
-
     const pd = el('priceDrops');
     if (pd) pd.textContent = products.filter(p => p.price && p.target && p.price <= p.target).length;
 }
