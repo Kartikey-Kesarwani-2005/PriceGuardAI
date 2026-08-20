@@ -28,6 +28,10 @@ function updateStats(products) {
 
     const pd = el('priceDrops');
     if (pd) pd.textContent = products.filter(p => p.price && p.target && p.price <= p.target).length;
+
+    const cats = new Set(products.map(p => p.category));
+    const st = el('storesTracked');
+    if (st) st.textContent = cats.size;
 }
 
 async function loadLastRefresh() {
@@ -36,8 +40,7 @@ async function loadLastRefresh() {
         const data = await res.json();
         const el = document.getElementById('lastRefresh');
         if (el && data.lastRefresh) {
-            const time = new Date(data.lastRefresh).toLocaleString();
-            el.textContent = 'Last updated: ' + time;
+            el.textContent = 'Last updated: ' + new Date(data.lastRefresh).toLocaleString();
         } else if (el) {
             el.textContent = 'Last updated: Just now';
         }

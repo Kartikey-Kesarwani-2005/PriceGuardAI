@@ -1,7 +1,10 @@
 const table = document.getElementById('productsTable');
+const categoryTabs = document.getElementById('categoryTabs');
 let allProducts = [];
+let activeCategory = null;
+let categories = {};
 
-async function renderProducts(productList = allProducts) {
+async function renderProducts(productList) {
     if (!table) return;
     table.innerHTML = '';
     productList.forEach(product => {
@@ -15,22 +18,69 @@ async function renderProducts(productList = allProducts) {
 function bindCheckboxes() {
     const checks = document.querySelectorAll('.compare-check');
     const btn = document.getElementById('compareBtn');
+    const hint = document.getElementById('compareHint');
+
     checks.forEach(c => c.addEventListener('change', () => {
         const selected = document.querySelectorAll('.compare-check:checked');
-        if (btn) btn.disabled = selected.length < 2;
-        if (btn) btn.textContent = selected.length >= 2 ? `Compare (${selected.length})` : 'Compare Selected';
+        if (selected.length < 2) {
+            if (btn) { btn.disabled = true; btn.textContent = 'Compare Selected'; }
+            if (hint) hint.textContent = 'Select 2+ products from same category';
+            return;
+        }
+
+        const cats = new Set();
+        selected.forEach(s => cats.add(s.dataset.category));
+
+        if (cats.size > 1) {
+            if (btn) { btn.disabled = true; btn.textContent = 'Compare Selected'; }
+            if (hint) hint.textContent = 'Select products from the same category only';
+        } else {
+            if (btn) { btn.disabled = false; btn.textContent = `Compare (${selected.length})`; }
+            if (hint) hint.textContent = `Comparing ${cats.values().next().value} products`;
+        }
     }));
 }
 
-async function loadProducts() {
+async function loadProducts(category) {
     try {
-        allProducts = await fetchProducts();
-        renderProducts();
+        allProducts = await fetchProducts(category);
+        renderProducts(allProducts);
     } catch (err) {
         console.error('Error loading products:', err);
     }
 }
 
+async function loadCategories() {
+    categories = await fetchCategories();
+    if (!categoryTabs) return;
+
+    categoryTabs.innerHTML = '';
+    const allTab = document.createElement('button');
+    allTab.className = 'cat-tab active';
+    allTab.textContent = 'All';
+    allTab.addEventListener('click', () => {
+        activeCategory = null;
+        document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+        allTab.classList.add('active');
+        loadProducts();
+    });
+    categoryTabs.appendChild(allTab);
+
+    Object.keys(categories).forEach(cat => {
+        const tab = document.createElement('button');
+        tab.className = 'cat-tab';
+        tab.textContent = `${cat} (${categories[cat].length})`;
+        tab.addEventListener('click', () => {
+            activeCategory = cat;
+            document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            loadProducts(cat);
+        });
+        categoryTabs.appendChild(tab);
+    });
+}
+
+loadCategories();
 loadProducts();
 
 const search = document.getElementById('productSearch');
@@ -38,7 +88,7 @@ if (search) {
     search.addEventListener('input', () => {
         const value = search.value.toLowerCase().trim();
         renderProducts(allProducts.filter(p =>
-            p.name.toLowerCase().includes(value) || p.store.toLowerCase().includes(value)
+            p.name.toLowerCase().includes(value) || p.category.toLowerCase().includes(value) || p.store.toLowerCase().includes(value)
         ));
     });
 }
@@ -48,37 +98,22 @@ const form = document.getElementById('productForm');
 const cancel = document.getElementById('cancelProduct');
 const startMonitoring = document.getElementById('startMonitoring');
 
-if (showForm) {
-    showForm.addEventListener('click', () => form.classList.toggle('hidden'));
-}
-
-if (cancel) {
-    cancel.addEventListener('click', () => form.classList.add('hidden'));
-}
+if (showForm) showForm.addEventListener('click', () => form.classList.toggle('hidden'));
+if (cancel) cancel.addEventListener('click', () => form.classList.add('hidden'));
 
 if (startMonitoring) {
     startMonitoring.addEventListener('click', () => {
         const name = document.getElementById('productName').value;
         const target = Number(document.getElementById('targetPrice').value);
-
-        if (!name || !target) {
-            alert('Please enter product name and target price.');
-            return;
-        }
+        if (!name || !target) { alert('Please enter product name and target price.'); return; }
 
         allProducts.push({
-            id: 'custom_' + Date.now(),
-            name,
-            store: 'Custom',
-            target,
-            price: 0,
-            availability: 'Unknown',
-            rating: 0,
-            reviews: 0,
-            lastChecked: new Date().toISOString()
+            id: 'custom_' + Date.now(), name, category: 'Custom', store: 'Custom', target,
+            price: 0, originalPrice: 0, availability: 'Unknown', rating: 0, reviews: 0,
+            specs: {}, lastChecked: new Date().toISOString()
         });
 
-        renderProducts();
+        renderProducts(allProducts);
         form.classList.add('hidden');
         document.getElementById('productName').value = '';
         document.getElementById('targetPrice').value = '';
@@ -91,6 +126,7 @@ const compareModal = document.getElementById('compareModal');
 const compareOverlay = document.getElementById('compareOverlay');
 const closeCompare = document.getElementById('closeCompare');
 const compareBody = document.getElementById('compareBody');
+const compareTitle = document.getElementById('compareTitle');
 
 if (compareBtn) {
     compareBtn.addEventListener('click', async () => {
@@ -102,13 +138,21 @@ if (compareBtn) {
         compareBody.innerHTML = '<div class="loading">Loading comparison...</div>';
 
         const data = await fetchCompare(ids);
-        if (!data.length) {
+        if (!data || !data.products || !data.products.length) {
             compareBody.innerHTML = '<div class="error">Failed to load comparison data</div>';
             return;
         }
 
+        const { category, products: prods } = data;
+        compareTitle.textContent = `${category} Comparison`;
+
+        const allSpecs = {};
+        prods.forEach(p => {
+            if (p.specs) Object.keys(p.specs).forEach(k => { allSpecs[k] = true; });
+        });
+
         let html = '<table class="compare-table"><thead><tr><th></th>';
-        data.forEach(p => { html += `<th>${p.name}</th>`; });
+        prods.forEach(p => { html += `<th>${p.name}</th>`; });
         html += '</tr></thead><tbody>';
 
         const fields = [
@@ -116,22 +160,33 @@ if (compareBtn) {
             { label: 'Current Price', key: 'price', format: formatPrice },
             { label: 'Original Price', key: 'originalPrice', format: formatPrice },
             { label: 'Target Price', key: 'target', format: formatPrice },
+            { label: 'Discount', key: null, format: (_, p) => {
+                if (!p.price || !p.originalPrice || p.originalPrice <= p.price) return '-';
+                const d = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
+                return d > 0 ? `${d}% off` : '-';
+            }},
             { label: 'Rating', key: 'rating', format: v => v ? `${v} / 5` : 'N/A' },
             { label: 'Reviews', key: 'reviews', format: v => v ? v.toLocaleString('en-IN') : '0' },
             { label: 'Stock', key: 'availability', format: v => getStockStatus(v) },
-            { label: 'Status', key: null, format: (_, p) => getHealthStatus(p) },
         ];
+
+        Object.keys(allSpecs).forEach(key => {
+            fields.push({
+                label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
+                key: 'specs',
+                format: (specs) => (specs && specs[key]) || '-'
+            });
+        });
 
         fields.forEach(f => {
             html += `<tr><td class="compare-label">${f.label}</td>`;
-            data.forEach(p => {
+            prods.forEach(p => {
                 let val = f.key ? p[f.key] : p;
                 let display = f.format ? f.format(val, p) : (val || 'N/A');
                 let cls = '';
                 if (f.label === 'Current Price' && p.price && p.target && p.price <= p.target) cls = 'compare-good';
                 if (f.label === 'Stock' && getStockStatus(p.availability) === 'Out of Stock') cls = 'compare-bad';
-                if (f.label === 'Status' && getHealthStatus(p) === 'Healthy') cls = 'compare-good';
-                if (f.label === 'Status' && getHealthStatus(p) === 'Error') cls = 'compare-bad';
+                if (f.label === 'Stock' && getStockStatus(p.availability) === 'In Stock') cls = 'compare-good';
                 html += `<td class="${cls}">${display}</td>`;
             });
             html += '</tr>';
@@ -142,10 +197,5 @@ if (compareBtn) {
     });
 }
 
-if (closeCompare) {
-    closeCompare.addEventListener('click', () => compareModal.classList.add('hidden'));
-}
-
-if (compareOverlay) {
-    compareOverlay.addEventListener('click', () => compareModal.classList.add('hidden'));
-}
+if (closeCompare) closeCompare.addEventListener('click', () => compareModal.classList.add('hidden'));
+if (compareOverlay) compareOverlay.addEventListener('click', () => compareModal.classList.add('hidden'));

@@ -1,13 +1,25 @@
 const API_BASE = '';
 
-async function fetchProducts() {
+async function fetchProducts(category) {
     try {
-        const response = await fetch(`${API_BASE}/api/products`);
+        const url = category ? `${API_BASE}/api/products?category=${encodeURIComponent(category)}` : `${API_BASE}/api/products`;
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch products');
         return await response.json();
     } catch (err) {
         console.error('Error fetching products:', err);
         return [];
+    }
+}
+
+async function fetchCategories() {
+    try {
+        const response = await fetch(`${API_BASE}/api/categories`);
+        if (!response.ok) throw new Error('Failed to fetch categories');
+        return await response.json();
+    } catch (err) {
+        console.error('Error fetching categories:', err);
+        return {};
     }
 }
 
@@ -29,7 +41,7 @@ async function fetchCompare(ids) {
         return await response.json();
     } catch (err) {
         console.error('Error comparing products:', err);
-        return [];
+        return null;
     }
 }
 
@@ -65,13 +77,16 @@ function renderProductRow(product, showCheckbox) {
 
     const price = formatPrice(product.price);
     const target = formatPrice(product.target);
-    const checkbox = showCheckbox ? `<td><input type="checkbox" class="compare-check" data-id="${product.id}"></td>` : '';
+    const checkbox = showCheckbox ? `<td><input type="checkbox" class="compare-check" data-id="${product.id}" data-category="${product.category}"></td>` : '';
+    const discount = product.price && product.originalPrice && product.originalPrice > product.price
+        ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+        : 0;
 
     return `
         ${checkbox}
-        <td><strong>${product.name}</strong></td>
+        <td><strong>${product.name}</strong><br><span class="muted" style="font-size:10px">${product.category}</span></td>
         <td class="muted">${product.store}</td>
-        <td><strong>${price}</strong></td>
+        <td><strong>${price}</strong>${discount > 0 ? `<br><span class="stock-good" style="font-size:10px">${discount}% off</span>` : ''}</td>
         <td class="muted">${target}</td>
         <td><span class="${stockClass}">${stockStatus}</span></td>
         <td><span class="status-badge ${statusClass}">${healthStatus}</span></td>`;

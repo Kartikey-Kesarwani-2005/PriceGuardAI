@@ -1818,3 +1818,34 @@ td strong {
     color: #e74c3c;
     font-weight: 600;
 }
+
+.category-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 4px 0;
+}
+
+.cat-tab {
+    border: 1px solid #e0e4ea;
+    background: white;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #697386;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.cat-tab:hover {
+    background: #f6f8fb;
+    color: #3157d5;
+}
+
+.cat-tab.active {
+    background: #eef3ff;
+    color: #3157d5;
+    border-color: #3157d5;
+    font-weight: 600;
+}
