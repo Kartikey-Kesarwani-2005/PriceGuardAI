@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scraper Health - PriceGuard AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app" id="app"></div>
+
+    <script src="js/components/layout.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = Layout.renderPage('scrapers', 'Scraper Health', 'Monitor scraper status and reliability.', `
+            <div class="health-grid">
+                <div class="health-card"><div class="health-icon green">◉</div><div><h3>Healthy</h3><p class="health-count" id="healthyCount">0</p></div></div>
+                <div class="health-card"><div class="health-icon blue">✦</div><div><h3>Recently repaired</h3><p class="health-count">4</p></div></div>
+                <div class="health-card"><div class="health-icon yellow">⚠</div><div><h3>Needs attention</h3><p class="health-count" id="attentionCount">0</p></div></div>
+            </div>
+            <div class="table-card">
+                <div class="table-header"><h3>Active scraper monitors</h3></div>
+                <div class="scraper-list" id="scraperList"></div>
+            </div>
+        `);
+    </script>
+    <script src="js/app.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/pages/scrapers.js"></script>
+</body>
+</html>
