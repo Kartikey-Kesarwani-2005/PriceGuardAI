@@ -3,10 +3,21 @@ const { exec } = require('child_process');
 const router = express.Router();
 
 const products = [
-    { id: 'iphone15', name: 'Apple iPhone 15', store: 'Amazon', url: 'https://www.amazon.in/dp/B0D875WP7X', target: 55000, pipeline: 'amazon_product' },
-    { id: 'galaxys24', name: 'Samsung Galaxy S24', store: 'Flipkart', url: 'https://www.flipkart.com/samsung-galaxy-s24-5g-marble-gray-256-gb/p/itm6d6498db3c82c', target: 60000, pipeline: 'google_shopping' },
-    { id: 'hppavilion', name: 'HP Pavilion 14', store: 'Amazon', url: 'https://www.amazon.in/dp/B0CVRD9RPZ', target: 48000, pipeline: 'amazon_product' },
-    { id: 'sonywh1000', name: 'Sony WH-1000XM5', store: 'Croma', url: 'https://www.croma.com/sony-wh-1000xm5-wireless-noise-cancelling-headphones-black/p/273745', target: 27000, pipeline: 'google_shopping' }
+    { id: 'iphone15', name: 'Apple iPhone 15 (128GB)', store: 'Amazon', url: 'https://www.amazon.in/dp/B0D875WP7X', target: 55000, pipeline: 'amazon_product' },
+    { id: 'iphone15pro', name: 'Apple iPhone 15 Pro (128GB)', store: 'Amazon', url: 'https://www.amazon.in/dp/B0D878JP7W', target: 100000, pipeline: 'amazon_product' },
+    { id: 'galaxys24', name: 'Samsung Galaxy S24 5G (256GB)', store: 'Flipkart', url: 'https://www.flipkart.com/samsung-galaxy-s24-5g-marble-gray-256-gb/p/itm6d6498db3c82c', target: 60000, pipeline: 'google_shopping' },
+    { id: 'galaxys24ultra', name: 'Samsung Galaxy S24 Ultra (256GB)', store: 'Amazon', url: 'https://www.amazon.in/dp/B0CMDL6WP5', target: 110000, pipeline: 'amazon_product' },
+    { id: 'oneplus12', name: 'OnePlus 12 (256GB)', store: 'Amazon', url: 'https://www.amazon.in/dp/B0CSV2GFPV', target: 55000, pipeline: 'amazon_product' },
+    { id: 'pixel8', name: 'Google Pixel 8 (128GB)', store: 'Flipkart', url: 'https://www.flipkart.com/google-pixel-8-bay-128-gb/p/itm7c7188325efef', target: 50000, pipeline: 'google_shopping' },
+    { id: 'macbookair', name: 'Apple MacBook Air M3 (8GB/256GB)', store: 'Amazon', url: 'https://www.amazon.in/dp/B0CX23V2ZK', target: 90000, pipeline: 'amazon_product' },
+    { id: 'dellxps', name: 'Dell XPS 15 (i7/16GB/512GB)', store: 'Amazon', url: 'https://www.amazon.in/dp/B0CX28V2ZK', target: 110000, pipeline: 'amazon_product' },
+    { id: 'asusrog', name: 'ASUS ROG Strix G16 (i7/RTX 4060)', store: 'Flipkart', url: 'https://www.flipkart.com/asus-rog-strix-g16-2024-core-i7-14th-gen-16-gb-1-tb-ssd-rtx-4060-win11-home-16-gaming-laptop/p/itm6b15dbc2cebd2', target: 100000, pipeline: 'google_shopping' },
+    { id: 'sonywh1000', name: 'Sony WH-1000XM5', store: 'Croma', url: 'https://www.croma.com/sony-wh-1000xm5-wireless-noise-cancelling-headphones-black/p/273745', target: 27000, pipeline: 'google_shopping' },
+    { id: 'airpodspro', name: 'Apple AirPods Pro 2nd Gen', store: 'Amazon', url: 'https://www.amazon.in/dp/B0D1XD1ZV3', target: 20000, pipeline: 'amazon_product' },
+    { id: 'samsungbuds', name: 'Samsung Galaxy Buds3 Pro', store: 'Amazon', url: 'https://www.amazon.in/dp/B0D63MFLS1', target: 15000, pipeline: 'amazon_product' },
+    { id: 'applewatch', name: 'Apple Watch SE 2nd Gen (40mm)', store: 'Amazon', url: 'https://www.amazon.in/dp/B0CHX6BM37', target: 25000, pipeline: 'amazon_product' },
+    { id: 'samsungwatch', name: 'Samsung Galaxy Watch6 (44mm)', store: 'Flipkart', url: 'https://www.flipkart.com/samsung-galaxy-watch6-graphite-44-mm/p/itm9e89afdbe8cdb6', target: 20000, pipeline: 'google_shopping' },
+    { id: 'ipadair', name: 'Apple iPad Air M1 (64GB)', store: 'Amazon', url: 'https://www.amazon.in/dp/B0B3C5RSMK', target: 48000, pipeline: 'amazon_product' }
 ];
 
 function fetchProductData(product) {
