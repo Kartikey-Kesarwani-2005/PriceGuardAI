@@ -1,8 +1,13 @@
 const express = require('express');
 const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 const router = express.Router();
 
 let USE_DEMO = true;
+
+const CACHE_FILE = path.join(__dirname, '..', 'data', 'cache.json');
+const REFRESH_INTERVAL = 15 * 60 * 1000;
 
 const products = [
     { id: 'smartphones', name: 'Smartphones', store: 'Amazon', url: 'https://www.amazon.in/s?k=smartphones&ref=nb_sb_noss', target: 30000, pipeline: 'amazon_product_search' },
@@ -23,25 +28,50 @@ const products = [
 ];
 
 const demoData = {
-    smartphones:   { price: 24999, originalPrice: 31999, availability: 'In Stock', rating: 4.3, reviews: 12453, image: '' },
-    laptops:       { price: 54990, originalPrice: 69990, availability: 'In Stock', rating: 4.5, reviews: 8721, image: '' },
-    headphones:    { price: 3999, originalPrice: 5999, availability: 'In Stock', rating: 4.1, reviews: 23410, image: '' },
-    smartwatches:  { price: 12999, originalPrice: 17999, availability: 'Low Stock', rating: 4.0, reviews: 5632, image: '' },
-    tablets:       { price: 27999, originalPrice: 35000, availability: 'In Stock', rating: 4.2, reviews: 3421, image: '' },
-    cameras:       { price: 42999, originalPrice: 52000, availability: 'In Stock', rating: 4.6, reviews: 1892, image: '' },
-    gaming:        { price: 49990, originalPrice: 54990, availability: 'Out of Stock', rating: 4.8, reviews: 7654, image: '' },
-    tvs:           { price: 32999, originalPrice: 44999, availability: 'In Stock', rating: 4.3, reviews: 9821, image: '' },
-    ac:            { price: 28999, originalPrice: 38000, availability: 'In Stock', rating: 4.1, reviews: 4321, image: '' },
-    'washing-machines': { price: 22499, originalPrice: 29000, availability: 'In Stock', rating: 4.2, reviews: 6123, image: '' },
-    refrigerators: { price: 26999, originalPrice: 34000, availability: 'In Stock', rating: 4.4, reviews: 3891, image: '' },
-    speakers:      { price: 3499, originalPrice: 5499, availability: 'In Stock', rating: 4.0, reviews: 15234, image: '' },
-    earphones:     { price: 1499, originalPrice: 2499, availability: 'Low Stock', rating: 3.9, reviews: 28910, image: '' },
-    monitors:      { price: 18999, originalPrice: 24000, availability: 'In Stock', rating: 4.3, reviews: 7654, image: '' },
-    printers:      { price: 13499, originalPrice: 18000, availability: 'In Stock', rating: 4.1, reviews: 2341, image: '' }
+    smartphones:   { price: 24999, originalPrice: 31999, availability: 'In Stock', rating: 4.3, reviews: 12453 },
+    laptops:       { price: 54990, originalPrice: 69990, availability: 'In Stock', rating: 4.5, reviews: 8721 },
+    headphones:    { price: 3999, originalPrice: 5999, availability: 'In Stock', rating: 4.1, reviews: 23410 },
+    smartwatches:  { price: 12999, originalPrice: 17999, availability: 'Low Stock', rating: 4.0, reviews: 5632 },
+    tablets:       { price: 27999, originalPrice: 35000, availability: 'In Stock', rating: 4.2, reviews: 3421 },
+    cameras:       { price: 42999, originalPrice: 52000, availability: 'In Stock', rating: 4.6, reviews: 1892 },
+    gaming:        { price: 49990, originalPrice: 54990, availability: 'Out of Stock', rating: 4.8, reviews: 7654 },
+    tvs:           { price: 32999, originalPrice: 44999, availability: 'In Stock', rating: 4.3, reviews: 9821 },
+    ac:            { price: 28999, originalPrice: 38000, availability: 'In Stock', rating: 4.1, reviews: 4321 },
+    'washing-machines': { price: 22499, originalPrice: 29000, availability: 'In Stock', rating: 4.2, reviews: 6123 },
+    refrigerators: { price: 26999, originalPrice: 34000, availability: 'In Stock', rating: 4.4, reviews: 3891 },
+    speakers:      { price: 3499, originalPrice: 5499, availability: 'In Stock', rating: 4.0, reviews: 15234 },
+    earphones:     { price: 1499, originalPrice: 2499, availability: 'Low Stock', rating: 3.9, reviews: 28910 },
+    monitors:      { price: 18999, originalPrice: 24000, availability: 'In Stock', rating: 4.3, reviews: 7654 },
+    printers:      { price: 13499, originalPrice: 18000, availability: 'In Stock', rating: 4.1, reviews: 2341 }
 };
 
+function loadCache() {
+    try {
+        if (fs.existsSync(CACHE_FILE)) {
+            const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
+            return JSON.parse(raw);
+        }
+    } catch (e) {
+        console.error('Failed to load cache:', e.message);
+    }
+    return { products: {}, lastRefresh: null };
+}
+
+function saveCache(cache) {
+    try {
+        const dir = path.dirname(CACHE_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8');
+    } catch (e) {
+        console.error('Failed to save cache:', e.message);
+    }
+}
+
+let fileCache = loadCache();
+let refreshing = false;
+
 function getDemoProduct(product) {
-    const d = demoData[product.id] || { price: 0, originalPrice: 0, availability: 'Unknown', rating: 0, reviews: 0, image: '' };
+    const d = demoData[product.id] || { price: 0, originalPrice: 0, availability: 'Unknown', rating: 0, reviews: 0 };
     return {
         ...product,
         price: d.price,
@@ -49,7 +79,7 @@ function getDemoProduct(product) {
         availability: d.availability,
         rating: d.rating,
         reviews: d.reviews,
-        image: d.image,
+        image: '',
         items: [],
         lastChecked: new Date().toISOString()
     };
@@ -84,48 +114,80 @@ function mapProductData(product, data) {
     };
 }
 
-const CACHE_TTL = 5 * 60 * 1000;
-const cache = new Map();
-
-function getCached(productId) {
-    const entry = cache.get(productId);
-    if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
-    return null;
-}
-
-function setCache(productId, data) {
-    cache.set(productId, { data, ts: Date.now() });
-}
-
 async function fetchSingleProduct(product) {
-    if (USE_DEMO) return getDemoProduct(product);
+    if (USE_DEMO) {
+        const cached = fileCache.products[product.id];
+        if (cached && cached._source === 'demo') return cached;
+        const demo = getDemoProduct(product);
+        demo._source = 'demo';
+        fileCache.products[product.id] = demo;
+        saveCache(fileCache);
+        return demo;
+    }
 
-    const cached = getCached(product.id);
-    if (cached) return cached;
+    const cached = fileCache.products[product.id];
+    if (cached && !cached.error) return cached;
 
     try {
         const data = await fetchProductData(product);
         const mapped = mapProductData(product, data);
-        setCache(product.id, mapped);
+        mapped._source = 'live';
+        fileCache.products[product.id] = mapped;
+        saveCache(fileCache);
         return mapped;
     } catch (err) {
         console.error(`Error fetching ${product.name}:`, err.message);
-        return { ...product, price: 0, originalPrice: 0, availability: 'Error', rating: 0, reviews: 0, image: '', items: [], lastChecked: new Date().toISOString(), error: err.message };
+        const fallback = { ...product, price: 0, originalPrice: 0, availability: 'Error', rating: 0, reviews: 0, image: '', items: [], lastChecked: new Date().toISOString(), error: err.message, _source: 'error' };
+        fileCache.products[product.id] = fallback;
+        saveCache(fileCache);
+        return fallback;
     }
+}
+
+async function refreshAllProducts() {
+    if (refreshing) return;
+    refreshing = true;
+    console.log('Refreshing all products...');
+
+    for (const product of products) {
+        try {
+            const data = await fetchProductData(product);
+            const mapped = mapProductData(product, data);
+            mapped._source = 'live';
+            fileCache.products[product.id] = mapped;
+        } catch (err) {
+            console.error(`Refresh failed for ${product.name}:`, err.message);
+        }
+    }
+
+    fileCache.lastRefresh = new Date().toISOString();
+    saveCache(fileCache);
+    refreshing = false;
+    console.log('Refresh complete at', fileCache.lastRefresh);
 }
 
 async function fetchAllProducts() {
     return Promise.all(products.map(p => fetchSingleProduct(p)));
 }
 
+setInterval(() => {
+    if (!USE_DEMO) refreshAllProducts();
+}, REFRESH_INTERVAL);
+
 router.get('/mode', (req, res) => {
-    res.json({ demo: USE_DEMO });
+    res.json({ demo: USE_DEMO, lastRefresh: fileCache.lastRefresh, refreshing });
 });
 
 router.post('/mode', (req, res) => {
     USE_DEMO = !!req.body.demo;
-    cache.clear();
     res.json({ demo: USE_DEMO });
+});
+
+router.post('/refresh', async (req, res) => {
+    if (USE_DEMO) return res.json({ ok: true, message: 'Demo mode - no refresh needed' });
+    if (refreshing) return res.json({ ok: false, message: 'Refresh already in progress' });
+    refreshAllProducts();
+    res.json({ ok: true, message: 'Refresh started' });
 });
 
 router.get('/products', async (req, res) => {

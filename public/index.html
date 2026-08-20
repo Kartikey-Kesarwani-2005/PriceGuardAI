@@ -14,6 +14,10 @@
     <script>
         const app = document.getElementById('app');
         app.innerHTML = Layout.renderPage('dashboard', 'Good morning, Kartikey', "Here's what's happening with your monitored products.", `
+            <div class="page-top">
+                <button class="primary-button" id="refreshBtn">Refresh Data</button>
+                <span class="muted" id="lastRefresh" style="font-size:12px;margin-left:10px;"></span>
+            </div>
             <div class="stats-grid">
                 <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Products Monitored</p><h2 class="stat-value" id="productsMonitored">0</h2></div><div class="stat-icon">□</div></div><div class="stat-bottom"><span class="stat-trend">Active</span><span class="stat-description">Across all stores</span></div></div>
                 <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Healthy Scrapers</p><h2 class="stat-value" id="healthyScrapers">0</h2></div><div class="stat-icon">◉</div></div><div class="stat-bottom"><span class="stat-trend">Operational</span><span class="stat-description">All monitors active</span></div></div>
