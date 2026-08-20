@@ -1,35 +1,56 @@
-const healingEvents = [
-    { site: 'Amazon', product: 'Smartphones', oldSelector: '.s-result-item', newSelector: '[data-component-type="s-search-result"]', confidence: 96, time: '12 minutes ago' },
-    { site: 'Flipkart', product: 'Laptops', oldSelector: '._1AtVbE', newSelector: '._13oc-S', confidence: 93, time: '48 minutes ago' },
-    { site: 'Amazon', product: 'Headphones', oldSelector: '.a-price', newSelector: '.a-price .a-offscreen', confidence: 91, time: '1 hour ago' },
-    { site: 'Croma', product: 'Smartwatches', oldSelector: '.product-price', newSelector: '.selling-price', confidence: 98, time: '2 hours ago' },
-    { site: 'Amazon', product: 'Televisions', oldSelector: '#priceblock_ourprice', newSelector: '.a-price-whole', confidence: 95, time: '3 hours ago' },
-    { site: 'Flipkart', product: 'Speakers', oldSelector: '._1V2m46', newSelector: '._30jeq3._16Jk6D', confidence: 89, time: '4 hours ago' }
-];
-
 const healingList = document.getElementById('healingList');
 
-if (healingList) {
-    healingEvents.forEach(ev => {
-        const card = document.createElement('div');
-        card.className = 'healing-card';
-        card.innerHTML = `
-            <div class="healing-info">
-                <div class="healing-title">
-                    <span class="success-icon">✓</span>
-                    <h3>${ev.site} · ${ev.product}</h3>
+async function renderHealing() {
+    if (!healingList) return;
+    healingList.innerHTML = '<div class="loading">Loading healing events...</div>';
+
+    try {
+        const events = await fetchHealing();
+        healingList.innerHTML = '';
+
+        if (events.length === 0) {
+            healingList.innerHTML = '<div class="loading">No healing events</div>';
+            return;
+        }
+
+        events.forEach(ev => {
+            const card = document.createElement('div');
+            card.className = 'healing-card';
+            const timeAgo = getTimeAgo(ev.time);
+            const statusIcon = ev.status === 'repaired' ? '✓' : '✗';
+            const statusClass = ev.status === 'repaired' ? 'success-icon' : 'error-icon';
+            card.innerHTML = `
+                <div class="healing-info">
+                    <div class="healing-title">
+                        <span class="${statusClass}">${statusIcon}</span>
+                        <h3>${ev.site} · ${ev.product}</h3>
+                    </div>
+                    <span>Repaired ${timeAgo}</span>
                 </div>
-                <span>Repaired ${ev.time}</span>
-            </div>
-            <div class="selector-flow">
-                <code>${ev.oldSelector}</code>
-                <span>→</span>
-                <code class="selector-new">${ev.newSelector}</code>
-            </div>
-            <div class="confidence">
-                <span>AI confidence</span>
-                <strong>${ev.confidence}%</strong>
-            </div>`;
-        healingList.appendChild(card);
-    });
+                <div class="selector-flow">
+                    <code>${ev.oldSelector}</code>
+                    <span>→</span>
+                    <code class="selector-new">${ev.newSelector}</code>
+                </div>
+                <div class="confidence">
+                    <span>AI confidence</span>
+                    <strong>${ev.confidence}%</strong>
+                </div>`;
+            healingList.appendChild(card);
+        });
+    } catch (err) {
+        healingList.innerHTML = '<div class="error">Error loading healing events</div>';
+    }
 }
+
+function getTimeAgo(timestamp) {
+    const diff = Date.now() - new Date(timestamp).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + ' minutes ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + ' hours ago';
+    return Math.floor(hours / 24) + ' days ago';
+}
+
+renderHealing();

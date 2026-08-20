@@ -1,28 +1,48 @@
-const alerts = [
-    { type: 'price', icon: '↓', title: 'Price drop detected', product: 'Smartphones', message: 'Average smartphone prices dropped across Amazon', amount: '₹3,500', time: '18 minutes ago' },
-    { type: 'price', icon: '↓', title: 'Sale alert', product: 'Laptops', message: 'Big billion day deals active on Flipkart', amount: '₹12,000', time: '35 minutes ago' },
-    { type: 'stock', icon: '!', title: 'Low stock warning', product: 'Gaming Consoles', message: 'Limited stock across multiple sellers', amount: '', time: '1 hour ago' },
-    { type: 'price', icon: '↓', title: 'Target price hit', product: 'Headphones', message: 'Multiple headphones below target price', amount: '₹2,000', time: '2 hours ago' },
-    { type: 'stock', icon: '!', title: 'Out of stock', product: 'Smartwatches', message: 'Popular models going out of stock', amount: '', time: '3 hours ago' },
-    { type: 'price', icon: '↓', title: 'Price drop', product: 'Televisions', message: 'TV prices trending down this week', amount: '₹5,000', time: '5 hours ago' }
-];
-
 const alertsList = document.getElementById('alertsList');
 
-if (alertsList) {
-    alerts.forEach(a => {
-        const row = document.createElement('div');
-        row.className = 'alert-row';
-        row.innerHTML = `
-            <div class="alert-icon">${a.icon}</div>
-            <div class="alert-content">
-                <div class="alert-top">
-                    <div><h3>${a.title}</h3><strong>${a.product}</strong></div>
-                    <span>${a.time}</span>
-                </div>
-                <p>${a.message}</p>
-                ${a.amount ? `<b class="alert-amount">${a.amount}</b>` : ''}
-            </div>`;
-        alertsList.appendChild(row);
-    });
+async function renderAlerts() {
+    if (!alertsList) return;
+    alertsList.innerHTML = '<div class="loading">Loading alerts...</div>';
+
+    try {
+        const alerts = await fetchAlerts();
+        alertsList.innerHTML = '';
+
+        if (alerts.length === 0) {
+            alertsList.innerHTML = '<div class="loading">No alerts right now</div>';
+            return;
+        }
+
+        alerts.forEach(a => {
+            const row = document.createElement('div');
+            row.className = 'alert-row';
+            const iconClass = a.type === 'error' ? 'alert-icon-error' : a.type === 'stock' ? 'alert-icon-warning' : 'alert-icon';
+            const timeAgo = getTimeAgo(a.time);
+            row.innerHTML = `
+                <div class="${iconClass}">${a.icon}</div>
+                <div class="alert-content">
+                    <div class="alert-top">
+                        <div><h3>${a.title}</h3><strong>${a.product}</strong></div>
+                        <span>${timeAgo}</span>
+                    </div>
+                    <p>${a.message}</p>
+                    ${a.amount ? '<b class="alert-amount">' + a.amount + '</b>' : ''}
+                </div>`;
+            alertsList.appendChild(row);
+        });
+    } catch (err) {
+        alertsList.innerHTML = '<div class="error">Error loading alerts</div>';
+    }
 }
+
+function getTimeAgo(timestamp) {
+    const diff = Date.now() - new Date(timestamp).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + ' minutes ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + ' hours ago';
+    return Math.floor(hours / 24) + ' days ago';
+}
+
+renderAlerts();
