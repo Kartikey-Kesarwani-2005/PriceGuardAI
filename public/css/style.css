@@ -1688,3 +1688,31 @@ td strong {
 .stock-danger {
     color: #e74c3c;
 }
+
+.alert-icon-error {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 9px;
+    background: #fdecea;
+    color: #e74c3c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.alert-icon-warning {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 9px;
+    background: #fff7e7;
+    color: #bd800d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-icon {
+    color: #e74c3c;
+}
