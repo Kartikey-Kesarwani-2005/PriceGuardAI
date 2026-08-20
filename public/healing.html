@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Healing - PriceGuard AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app" id="app"></div>
+
+    <script src="js/components/layout.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = Layout.renderPage('healing', 'AI Self-Healing', 'Automatic selector detection and scraper repair.', `
+            <div class="healing-hero">
+                <div class="healing-hero-icon">✦</div>
+                <div>
+                    <h2>Self-healing engine is active</h2>
+                    <p>PriceGuard detects broken selectors, analyzes the updated page structure and validates a replacement before applying the repair.</p>
+                </div>
+            </div>
+            <div class="healing-list" id="healingList"></div>
+            <div class="pipeline-card">
+                <div class="pipeline-heading">
+                    <span>◈</span>
+                    <div><h3>How self-healing works</h3><p>Repair pipeline</p></div>
+                </div>
+                <div class="pipeline">
+                    <div class="pipeline-step"><span>01</span><strong>Detect failure</strong></div>
+                    <div class="pipeline-step"><span>02</span><strong>Analyze DOM</strong></div>
+                    <div class="pipeline-step"><span>03</span><strong>Generate selector</strong></div>
+                    <div class="pipeline-step"><span>04</span><strong>Validate & repair</strong></div>
+                </div>
+            </div>
+        `);
+    </script>
+    <script src="js/app.js"></script>
+    <script src="js/pages/healing.js"></script>
+</body>
+</html>
