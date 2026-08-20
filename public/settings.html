@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - PriceGuard AI</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app" id="app"></div>
+
+    <script src="js/components/layout.js"></script>
+    <script>
+        document.getElementById('app').innerHTML = Layout.renderPage('settings', 'Settings', 'Configure monitoring and self-healing behaviour.', `
+            <div class="settings-card">
+                <div class="setting-row">
+                    <div><h3>Continuous monitoring</h3><p>Periodically check monitored products for changes.</p></div>
+                    <button class="toggle toggle-on" data-setting="monitoring"><span></span></button>
+                </div>
+                <div class="setting-row">
+                    <div><h3>AI self-healing</h3><p>Automatically repair broken selectors.</p></div>
+                    <button class="toggle toggle-on" data-setting="healing"><span></span></button>
+                </div>
+                <div class="setting-row">
+                    <div><h3>Price notifications</h3><p>Notify when products reach target prices.</p></div>
+                    <button class="toggle toggle-on" data-setting="notifications"><span></span></button>
+                </div>
+            </div>
+            <div class="interval-card">
+                <h3>Monitoring interval</h3>
+                <p>How frequently should products be checked?</p>
+                <select id="interval">
+                    <option>Every 15 minutes</option>
+                    <option>Every 30 minutes</option>
+                    <option>Every 1 hour</option>
+                    <option>Every 6 hours</option>
+                </select>
+            </div>
+        `);
+    </script>
+    <script src="js/app.js"></script>
+    <script src="js/pages/settings.js"></script>
+</body>
+</html>
