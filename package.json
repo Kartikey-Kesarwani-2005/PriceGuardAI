@@ -1,0 +1,17 @@
+{
+  "name": "priceguardai",
+  "version": "2.0.0",
+  "description": "AI-powered price monitoring with Bright Data scrapers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["price-monitoring", "bright-data", "scraping"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
