@@ -1,10 +1,10 @@
 const alerts = [
-    { type: 'price', icon: '↓', title: 'Price dropped', product: 'Apple iPhone 15', message: 'Price dropped from ₹64,999 to ₹59,999', amount: '₹5,000', time: '18 minutes ago' },
-    { type: 'price', icon: '↓', title: 'Price dropped', product: 'OnePlus 12', message: 'Price dropped from ₹69,999 to ₹64,999', amount: '₹5,000', time: '35 minutes ago' },
-    { type: 'stock', icon: '!', title: 'Low stock detected', product: 'Dell XPS 15', message: 'Only limited stock appears to be available', amount: '', time: '1 hour ago' },
-    { type: 'price', icon: '↓', title: 'Target price reached', product: 'Sony WH-1000XM5', message: 'Product is now closer to your target price', amount: '₹27,990', time: '2 hours ago' },
-    { type: 'stock', icon: '!', title: 'Low stock detected', product: 'Samsung Galaxy Buds', message: 'Only 3 sellers left with stock', amount: '', time: '3 hours ago' },
-    { type: 'price', icon: '↓', title: 'Big price drop', product: 'Google Pixel 8', message: 'Major sale price active on Flipkart', amount: '₹8,000', time: '5 hours ago' }
+    { type: 'price', icon: '↓', title: 'Price drop detected', product: 'Smartphones', message: 'Average smartphone prices dropped across Amazon', amount: '₹3,500', time: '18 minutes ago' },
+    { type: 'price', icon: '↓', title: 'Sale alert', product: 'Laptops', message: 'Big billion day deals active on Flipkart', amount: '₹12,000', time: '35 minutes ago' },
+    { type: 'stock', icon: '!', title: 'Low stock warning', product: 'Gaming Consoles', message: 'Limited stock across multiple sellers', amount: '', time: '1 hour ago' },
+    { type: 'price', icon: '↓', title: 'Target price hit', product: 'Headphones', message: 'Multiple headphones below target price', amount: '₹2,000', time: '2 hours ago' },
+    { type: 'stock', icon: '!', title: 'Out of stock', product: 'Smartwatches', message: 'Popular models going out of stock', amount: '', time: '3 hours ago' },
+    { type: 'price', icon: '↓', title: 'Price drop', product: 'Televisions', message: 'TV prices trending down this week', amount: '₹5,000', time: '5 hours ago' }
 ];
 
 const alertsList = document.getElementById('alertsList');
