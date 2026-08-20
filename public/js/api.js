@@ -22,6 +22,17 @@ async function fetchAlerts() {
     }
 }
 
+async function fetchCompare(ids) {
+    try {
+        const response = await fetch(`${API_BASE}/api/compare?ids=${ids.join(',')}`);
+        if (!response.ok) throw new Error('Failed to compare products');
+        return await response.json();
+    } catch (err) {
+        console.error('Error comparing products:', err);
+        return [];
+    }
+}
+
 function formatPrice(price) {
     return price ? `₹${price.toLocaleString('en-IN')}` : '₹N/A';
 }
@@ -43,7 +54,7 @@ function getHealthStatus(product) {
     return 'Healthy';
 }
 
-function renderProductRow(product) {
+function renderProductRow(product, showCheckbox) {
     const stockStatus = getStockStatus(product.availability);
     const stockClass = stockStatus === 'In Stock' ? 'stock-good' :
                       stockStatus === 'Low Stock' ? 'stock-warning' : 'stock-danger';
@@ -54,8 +65,10 @@ function renderProductRow(product) {
 
     const price = formatPrice(product.price);
     const target = formatPrice(product.target);
+    const checkbox = showCheckbox ? `<td><input type="checkbox" class="compare-check" data-id="${product.id}"></td>` : '';
 
     return `
+        ${checkbox}
         <td><strong>${product.name}</strong></td>
         <td class="muted">${product.store}</td>
         <td><strong>${price}</strong></td>

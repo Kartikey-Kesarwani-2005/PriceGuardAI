@@ -14,6 +14,7 @@
         document.getElementById('app').innerHTML = Layout.renderPage('products', 'Products', 'Manage your monitored products.', `
             <div class="page-top">
                 <button class="btn btn-primary" id="showProductForm">+ Add product</button>
+                <button class="primary-button" id="compareBtn" disabled>Compare Selected</button>
             </div>
             <div class="form-card hidden" id="productForm">
                 <h3>Add new product</h3>
@@ -30,9 +31,19 @@
             <div class="search-card"><input type="text" id="productSearch" placeholder="Search products..."></div>
             <div class="table-card">
                 <table class="data-table">
-                    <thead><tr><th>Product</th><th>Store</th><th>Price</th><th>Target</th><th>Stock</th><th>Status</th></tr></thead>
+                    <thead><tr><th></th><th>Product</th><th>Store</th><th>Price</th><th>Target</th><th>Stock</th><th>Status</th></tr></thead>
                     <tbody id="productsTable"></tbody>
                 </table>
+            </div>
+            <div class="compare-modal hidden" id="compareModal">
+                <div class="compare-overlay" id="compareOverlay"></div>
+                <div class="compare-panel">
+                    <div class="compare-header">
+                        <h2>Product Comparison</h2>
+                        <button class="compare-close" id="closeCompare">&times;</button>
+                    </div>
+                    <div class="compare-body" id="compareBody"></div>
+                </div>
             </div>
         `);
     </script>
