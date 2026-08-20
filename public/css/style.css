@@ -1849,3 +1849,22 @@ td strong {
     border-color: #3157d5;
     font-weight: 600;
 }
+
+.scraper-category-header {
+    padding: 12px 20px;
+    background: #f8f9fb;
+    border-bottom: 1px solid #eef0f3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.scraper-category-header strong {
+    color: #151c2d;
+}
+
+.scraper-category-header span {
+    color: #8992a5;
+    font-size: 11px;
+}
