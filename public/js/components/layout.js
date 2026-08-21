@@ -38,8 +38,8 @@ const Layout = {
             <div class="header-right">
                 <button class="notification-button" id="notificationBtn" title="Alerts">♢<span class="notification-dot"></span></button>
                 <div class="profile">
-                    <div class="avatar">D</div>
-                    <div class="profile-info"><strong>Dev X</strong><span>Administrator</span></div>
+                    <div class="avatar">DX</div>
+                    <div class="profile-info"><strong>Dev X</strong><span class="profile-role"><span class="role-dot"></span>Pro Account</span></div>
                 </div>
             </div>
         </header>`;
