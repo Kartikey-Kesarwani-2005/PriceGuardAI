@@ -174,6 +174,15 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 
 The app starts in **Demo mode** (sample data, instant load). To go live, toggle **Settings → Demo mode OFF** — from then on every request runs through the real scraping pipeline with validation, retries, and self-healing.
 
+## Demo Walkthrough (2 minutes)
+
+1. **Open the problem** — prices for the same product vary across Amazon, Flipkart and Croma, and deals disappear fast. PriceGuard watches 29 products across all three stores so you don't have to.
+2. **Dashboard** (`/`) — instant overview in demo mode; point out target-price hits and discount alerts.
+3. **Go live** — Settings → toggle **Demo mode OFF**, then hit **Refresh Data** on the dashboard. The scraper queue starts filling real prices (Amazon lands within seconds; Flipkart/Croma batch jobs take a few minutes).
+4. **Scraper Health** (`/scrapers.html`) — the star of the demo: real success rates per product, heal counts, stale flags. Explain the loop: *run → validate → retry → auto-heal via Scraper Studio → stale-safe fallback*.
+5. **Show resilience** — point at `data/cache.json`: every failed extraction is logged with its reason (e.g. *"extracted price ₹439 is implausibly low vs target ₹55,000"*), and wrong data never reaches the UI.
+6. **Alerts** (`/alerts.html`) — price drops, stock status, and honest error/stale alerts side by side.
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
@@ -187,6 +196,13 @@ The app starts in **Demo mode** (sample data, instant load). To go live, toggle 
 | POST | `/api/refresh` | Trigger manual live refresh |
 | GET | `/api/categories` | Category → product ID map |
 | GET | `/api/compare?ids=a,b` | Compare products within a category |
+
+## Screenshots
+
+![Dashboard](docs/screenshots/dashboard.png)
+![Products](docs/screenshots/products.png)
+![Scraper Health](docs/screenshots/scraper-health.png)
+![Alerts](docs/screenshots/alerts.png)
 
 ## Structured Output
 
