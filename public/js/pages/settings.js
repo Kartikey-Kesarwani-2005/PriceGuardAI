@@ -13,14 +13,23 @@ async function loadDemoMode() {
     } catch (e) {}
 }
 
+async function loadInterval() {
+    try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        const interval = document.getElementById('interval');
+        if (interval && data.intervalMinutes) interval.value = String(data.intervalMinutes);
+    } catch (e) {}
+}
+
 loadDemoMode();
+loadInterval();
 
 document.querySelectorAll('.toggle').forEach(toggle => {
     if (toggle.id === 'toggleDemo') {
         toggle.addEventListener('click', async () => {
             toggle.classList.toggle('toggle-on');
             const enabled = toggle.classList.contains('toggle-on');
-            localStorage.setItem('pg_demo', enabled);
             try {
                 await fetch('/api/mode', {
                     method: 'POST',
@@ -47,10 +56,13 @@ document.querySelectorAll('.toggle').forEach(toggle => {
 
 const interval = document.getElementById('interval');
 if (interval) {
-    const saved = localStorage.getItem('pg_interval');
-    if (saved) interval.value = saved;
-
-    interval.addEventListener('change', () => {
-        localStorage.setItem('pg_interval', interval.value);
+    interval.addEventListener('change', async () => {
+        try {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ intervalMinutes: parseInt(interval.value, 10) })
+            });
+        } catch (e) {}
     });
 }

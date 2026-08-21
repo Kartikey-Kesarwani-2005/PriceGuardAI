@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "setup:scrapers": "node scripts/setup-scrapers.js"
   },
   "keywords": ["price-monitoring", "bright-data", "scraping"],
   "author": "",

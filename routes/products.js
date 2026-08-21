@@ -1,13 +1,44 @@
 const express = require('express');
-const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
+const { scrapeWithHealing, getStats, successRate, emptyStats } = require('../lib/healer');
 
 let USE_DEMO = true;
 
 const CACHE_FILE = path.join(__dirname, '..', 'data', 'cache.json');
-const REFRESH_INTERVAL = 15 * 60 * 1000;
+const CACHE_VERSION = 2;
+
+function defaultSettings() {
+    return { intervalMinutes: 15 };
+}
+
+function freshCache() {
+    return { version: CACHE_VERSION, products: {}, stats: {}, settings: defaultSettings(), lastRefresh: null };
+}
+
+function loadCache() {
+    try {
+        if (fs.existsSync(CACHE_FILE)) {
+            const parsed = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'));
+            if (parsed && parsed.version === CACHE_VERSION) {
+                if (!parsed.stats) parsed.stats = {};
+                if (!parsed.settings) parsed.settings = defaultSettings();
+                return parsed;
+            }
+            console.log('[cache] Old cache format detected, resetting to v' + CACHE_VERSION);
+        }
+    } catch (e) { console.error('Failed to load cache:', e.message); }
+    return freshCache();
+}
+
+function saveCache(cache) {
+    try {
+        const dir = path.dirname(CACHE_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8');
+    } catch (e) { console.error('Failed to save cache:', e.message); }
+}
 
 const products = [
     // Smartphones
@@ -95,25 +126,26 @@ const demoPrices = {
     'voltas-1.5':     { price: 28999, originalPrice: 38999, availability: 'In Stock', rating: 4.1, reviews: 8921 },
 };
 
-function loadCache() {
-    try {
-        if (fs.existsSync(CACHE_FILE)) {
-            return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'));
-        }
-    } catch (e) { console.error('Failed to load cache:', e.message); }
-    return { products: {}, lastRefresh: null };
-}
-
-function saveCache(cache) {
-    try {
-        const dir = path.dirname(CACHE_FILE);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8');
-    } catch (e) { console.error('Failed to save cache:', e.message); }
-}
-
 let fileCache = loadCache();
 let refreshing = false;
+let lastRefreshTick = Date.now();
+const inFlight = new Set();
+
+function withStats(record) {
+    const s = fileCache.stats[record.id] || emptyStats();
+    const rate = successRate(s);
+    return {
+        ...record,
+        stats: {
+            attempts: s.attempts,
+            successes: s.successes,
+            failures: s.failures,
+            heals: s.heals,
+            successRate: rate,
+            lastError: s.lastError
+        }
+    };
+}
 
 function getDemoProduct(product) {
     const d = demoPrices[product.id] || { price: 0, originalPrice: 0, availability: 'Unknown', rating: 0, reviews: 0 };
@@ -124,62 +156,79 @@ function getDemoProduct(product) {
         availability: d.availability,
         rating: d.rating,
         reviews: d.reviews,
-        lastChecked: new Date().toISOString()
+        lastChecked: new Date().toISOString(),
+        _source: 'demo'
     };
 }
 
-function fetchProductData(product) {
-    return new Promise((resolve, reject) => {
-        const url = `https://www.amazon.in/s?k=${encodeURIComponent(product.name)}`;
-        const cmd = `npx -p @brightdata/cli bdata pipelines amazon_product_search "${url}" --pretty`;
-        exec(cmd, { timeout: 120000 }, (error, stdout) => {
-            if (error) return reject(error);
-            try { resolve((JSON.parse(stdout))[0] || JSON.parse(stdout)); }
-            catch (e) { reject(e); }
-        });
-    });
-}
-
-function mapProductData(product, data) {
+function pendingRecord(product) {
     return {
         ...product,
-        price: data.current_price || data.price || data.sale_price || 0,
-        originalPrice: data.list_price || data.original_price || 0,
-        availability: data.availability || 'Unknown',
-        rating: data.rating || 0,
-        reviews: data.reviews_count || 0,
-        lastChecked: new Date().toISOString()
+        price: 0,
+        originalPrice: 0,
+        availability: 'Unknown',
+        rating: 0,
+        reviews: 0,
+        lastChecked: null,
+        _source: 'pending'
     };
+}
+
+const MAX_CONCURRENT_SCRAPES = 3;
+let activeScrapes = 0;
+const scrapeQueue = [];
+
+function kickOffScrape(product) {
+    if (inFlight.has(product.id)) return;
+    inFlight.add(product.id);
+    scrapeQueue.push(product);
+    pumpQueue();
+}
+
+function pumpQueue() {
+    while (activeScrapes < MAX_CONCURRENT_SCRAPES && scrapeQueue.length > 0) {
+        const product = scrapeQueue.shift();
+        activeScrapes++;
+        scrapeWithHealing(product, fileCache)
+            .then(result => {
+                fileCache.products[product.id] = result;
+                saveCache(fileCache);
+                console.log(`[scrape] Updated "${product.name}" (source: ${result._source})`);
+            })
+            .catch(err => console.error(`[scrape] Background failure for "${product.name}":`, err.message))
+            .finally(() => {
+                activeScrapes--;
+                inFlight.delete(product.id);
+                pumpQueue();
+            });
+    }
+}
+
+function isFresh(record) {
+    if (!record || !record.lastChecked || record.error || record.stale) return false;
+    const maxAge = (fileCache.settings.intervalMinutes || 15) * 60 * 1000;
+    return (Date.now() - new Date(record.lastChecked).getTime()) < maxAge;
 }
 
 async function fetchSingleProduct(product) {
     if (USE_DEMO) {
-        const cached = fileCache.products[product.id];
-        if (cached && cached._source === 'demo') return cached;
         const demo = getDemoProduct(product);
-        demo._source = 'demo';
         fileCache.products[product.id] = demo;
         saveCache(fileCache);
-        return demo;
+        return withStats(demo);
     }
 
     const cached = fileCache.products[product.id];
-    if (cached && !cached.error) return cached;
+    const usable = cached && cached._source !== 'demo' ? cached : null;
 
-    try {
-        const data = await fetchProductData(product);
-        const mapped = mapProductData(product, data);
-        mapped._source = 'live';
-        fileCache.products[product.id] = mapped;
-        saveCache(fileCache);
-        return mapped;
-    } catch (err) {
-        console.error(`Error fetching ${product.name}:`, err.message);
-        const fallback = { ...product, price: 0, originalPrice: 0, availability: 'Error', rating: 0, reviews: 0, lastChecked: new Date().toISOString(), error: err.message, _source: 'error' };
-        fileCache.products[product.id] = fallback;
-        saveCache(fileCache);
-        return fallback;
+    if (usable && isFresh(usable)) {
+        return withStats(usable);
     }
+
+    kickOffScrape(product);
+
+    if (usable) return withStats({ ...usable, stale: true, _source: usable._source === 'error' ? 'error' : 'stale' });
+    return withStats(pendingRecord(product));
 }
 
 async function fetchAllProducts() {
@@ -189,37 +238,95 @@ async function fetchAllProducts() {
 async function refreshAllProducts() {
     if (refreshing) return;
     refreshing = true;
-    console.log('Refreshing all products...');
-    for (const product of products) {
-        try {
-            const data = await fetchProductData(product);
-            const mapped = mapProductData(product, data);
-            mapped._source = 'live';
-            fileCache.products[product.id] = mapped;
-        } catch (err) {
-            console.error(`Refresh failed for ${product.name}:`, err.message);
+    console.log(`[refresh] Live refresh started (${products.length} products)...`);
+    try {
+        await Promise.all(products.map(p => fetchSingleProduct(p)));
+        const deadline = Date.now() + 600000;
+        while (inFlight.size > 0 && Date.now() < deadline) {
+            await new Promise(r => setTimeout(r, 1000));
         }
+    } finally {
+        fileCache.lastRefresh = new Date().toISOString();
+        saveCache(fileCache);
+        refreshing = false;
+        console.log('[refresh] Complete at', fileCache.lastRefresh);
     }
-    fileCache.lastRefresh = new Date().toISOString();
-    saveCache(fileCache);
-    refreshing = false;
-    console.log('Refresh complete at', fileCache.lastRefresh);
 }
 
-setInterval(() => { if (!USE_DEMO) refreshAllProducts(); }, REFRESH_INTERVAL);
+function scheduleRefresh() {
+    setInterval(() => {
+        if (USE_DEMO || refreshing) return;
+        const intervalMs = (fileCache.settings.intervalMinutes || 15) * 60 * 1000;
+        if (Date.now() - lastRefreshTick >= intervalMs) {
+            lastRefreshTick = Date.now();
+            refreshAllProducts();
+        }
+    }, 60000);
+}
+scheduleRefresh();
 
 router.get('/mode', (req, res) => {
     res.json({ demo: USE_DEMO, lastRefresh: fileCache.lastRefresh, refreshing });
 });
 
 router.post('/mode', (req, res) => {
-    USE_DEMO = !!req.body.demo;
+    USE_DEMO = !!(req.body && req.body.demo);
+    console.log(`[mode] Demo mode ${USE_DEMO ? 'ON' : 'OFF'}`);
     res.json({ demo: USE_DEMO });
+});
+
+router.get('/settings', (req, res) => {
+    res.json(fileCache.settings);
+});
+
+router.post('/settings', (req, res) => {
+    const allowed = [15, 30, 60, 360];
+    const minutes = parseInt(req.body && req.body.intervalMinutes, 10);
+    if (!allowed.includes(minutes)) {
+        return res.status(400).json({ error: `intervalMinutes must be one of ${allowed.join(', ')}` });
+    }
+    fileCache.settings.intervalMinutes = minutes;
+    saveCache(fileCache);
+    res.json(fileCache.settings);
+});
+
+router.get('/health', (req, res) => {
+    const perStore = {};
+    let totalAttempts = 0, totalSuccesses = 0, totalHeals = 0;
+    products.forEach(p => {
+        const s = fileCache.stats[p.id] || emptyStats();
+        if (!perStore[p.store]) perStore[p.store] = { attempts: 0, successes: 0, heals: 0, collectors: [] };
+        perStore[p.store].attempts += s.attempts;
+        perStore[p.store].successes += s.successes;
+        perStore[p.store].heals += s.heals;
+        totalAttempts += s.attempts;
+        totalSuccesses += s.successes;
+        totalHeals += s.heals;
+    });
+    Object.keys(perStore).forEach(store => {
+        const s = perStore[store];
+        s.successRate = s.attempts ? Math.round((s.successes / s.attempts) * 1000) / 10 : null;
+        delete s.collectors;
+    });
+    res.json({
+        mode: USE_DEMO ? 'demo' : 'live',
+        lastRefresh: fileCache.lastRefresh,
+        refreshing,
+        totals: {
+            products: products.length,
+            attempts: totalAttempts,
+            successes: totalSuccesses,
+            heals: totalHeals,
+            successRate: totalAttempts ? Math.round((totalSuccesses / totalAttempts) * 1000) / 10 : null
+        },
+        stores: perStore
+    });
 });
 
 router.post('/refresh', async (req, res) => {
     if (USE_DEMO) return res.json({ ok: true, message: 'Demo mode - no refresh needed' });
     if (refreshing) return res.json({ ok: false, message: 'Refresh already in progress' });
+    lastRefreshTick = Date.now();
     refreshAllProducts();
     res.json({ ok: true, message: 'Refresh started' });
 });
@@ -280,7 +387,10 @@ router.get('/alerts', async (req, res) => {
         allProducts.forEach(p => {
             const now = new Date().toISOString();
             if (p.error) {
-                alerts.push({ type: 'error', icon: '!', title: 'Scraper error', product: p.name, message: 'Failed to fetch data from ' + p.store, amount: '', time: now });
+                alerts.push({ type: 'error', icon: '!', title: 'Scraper error', product: p.name, message: 'Failed to fetch data from ' + p.store + ': ' + (p.error || '').slice(0, 120), amount: '', time: now });
+            }
+            if (p.stale) {
+                alerts.push({ type: 'error', icon: '~', title: 'Stale data', product: p.name, message: 'Live extraction failed - showing last known good data', amount: '', time: now });
             }
             if (p.price && p.target && p.price <= p.target) {
                 alerts.push({ type: 'price', icon: '↓', title: 'Target price reached', product: p.name, message: 'Current price ₹' + p.price.toLocaleString('en-IN') + ' is at or below target', amount: '₹' + p.target.toLocaleString('en-IN'), time: now });

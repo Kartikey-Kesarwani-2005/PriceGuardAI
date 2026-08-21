@@ -52,7 +52,17 @@ async function manualRefresh() {
     if (btn) { btn.textContent = 'Refreshing...'; btn.disabled = true; }
     try {
         await fetch('/api/refresh', { method: 'POST' });
-        setTimeout(() => { location.reload(); }, 2000);
+        const poll = setInterval(async () => {
+            try {
+                const res = await fetch('/api/mode');
+                const data = await res.json();
+                if (!data.refreshing) {
+                    clearInterval(poll);
+                    location.reload();
+                }
+            } catch (e) {}
+        }, 3000);
+        setTimeout(() => { clearInterval(poll); location.reload(); }, 180000);
     } catch (e) {
         if (btn) { btn.textContent = 'Refresh Data'; btn.disabled = false; }
     }

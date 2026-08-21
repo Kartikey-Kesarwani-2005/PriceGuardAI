@@ -11,7 +11,10 @@ function renderScraperRow(product) {
     const statusClass = healthStatus === 'Healthy' ? 'badge-success' :
                       healthStatus === 'Error' ? 'badge-danger' : 'badge-warning';
     const lastChecked = product.lastChecked ? new Date(product.lastChecked).toLocaleString() : 'Never';
-    const successRate = product.error ? '0%' : '99.9%';
+    const stats = product.stats || {};
+    const successRate = typeof stats.successRate === 'number' ? stats.successRate + '%' : (product._source === 'demo' ? 'demo' : '—');
+    const sourceLabel = product.stale ? 'stale cache' : (product._source === 'live-healed' ? 'live (self-healed)' : product._source || '');
+    const healBadge = stats.heals > 0 ? `<span title="Scraper Studio auto-repairs applied">Heals: <strong>${stats.heals}</strong></span>` : '';
     const stockStatus = getStockStatus(product.availability);
     const stockClass = stockStatus === 'In Stock' ? 'stock-good' :
                       stockStatus === 'Low Stock' ? 'stock-warning' : 'stock-danger';
@@ -21,13 +24,14 @@ function renderScraperRow(product) {
             <div class="scraper-icon">◉</div>
             <div>
                 <strong>${product.name}</strong>
-                <span>${product.category} · ${product.store} · Last checked: ${lastChecked}</span>
+                <span>${product.category} · ${product.store} · Last checked: ${lastChecked}${sourceLabel ? ' · ' + sourceLabel : ''}</span>
             </div>
         </div>
         <div class="scraper-right">
             <span>Price: <strong>${formatPrice(product.price)}</strong></span>
             <span>Stock: <strong class="${stockClass}">${stockStatus}</strong></span>
             <span>Success: <strong>${successRate}</strong></span>
+            ${healBadge}
             <span class="status-badge ${statusClass}">${healthStatus}</span>
         </div>`;
 

@@ -62,6 +62,7 @@ function getStockStatus(availability) {
 
 function getHealthStatus(product) {
     if (product.error) return 'Error';
+    if (product.stale) return 'Needs attention';
     if (!product.price || product.price === 0) return 'Needs attention';
     return 'Healthy';
 }

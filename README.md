@@ -1,49 +1,135 @@
 # PriceGuard AI
 
-AI-powered price monitoring and inventory intelligence platform that tracks product prices across multiple Indian e-commerce stores using Bright Data scrapers.
+AI-powered price monitoring and inventory intelligence platform that tracks product prices across multiple Indian e-commerce stores using **Bright Data Scraper Studio** and managed pipelines — with a built-in self-healing loop that keeps scrapers working when websites change.
 
 ## Features
 
 - **Multi-store Price Tracking** — Monitors products across Amazon, Flipkart, and Croma
 - **Target Price Alerts** — Get notified when product prices drop below your desired target
 - **Stock Monitoring** — Tracks product availability and flags out-of-stock items
-- **AI Scraper Healing** — Automatically detects and adapts to website changes
+- **Scraper Studio Integration** — Custom AI-generated scrapers for stores without pre-built pipelines
+- **Self-Healing Scrapers** — Automatic detection of broken extractions and one-command repair via Scraper Studio's heal API
+- **Real Health Metrics** — Per-product success rates, failure reasons, and heal counts (no fake numbers)
+- **Stale-Safe Fallback** — If live extraction fails, last known good data is served with an explicit "stale" flag instead of wrong data
 - **Discount Detection** — Identifies products with significant price drops (20%+ off)
 - **Dashboard** — Real-time overview of all monitored products, scraper health, and price alerts
+
+## Architecture
+
+```
+                        ┌─────────────────────────────────────────────┐
+                        │              Frontend (vanilla JS)          │
+                        │  Dashboard · Products · Alerts · Scraper    │
+                        │  Health · Settings                          │
+                        └──────────────────┬──────────────────────────┘
+                                           │ /api/*
+                        ┌──────────────────▼──────────────────────────┐
+                        │            Express server (server.js)       │
+                        │  routes/products.js                         │
+                        │  mode · refresh · settings · health         │
+                        └──────────────────┬──────────────────────────┘
+                                           │
+              ┌────────────────────────────▼───────────────────────────┐
+              │                    lib/healer.js                       │
+              │   run → validate → retry → HEAL → re-run → stale-safe  │
+              └───────────────┬───────────────────────┬────────────────┘
+                              │                       │
+        ┌─────────────────────▼───────┐   ┌───────────▼──────────────────┐
+        │      lib/scraperEngine.js   │   │   data/cache.json (v2)       │
+        │  store routing + validation │   │  products · stats · settings │
+        └──────┬──────────┬──────────┬┘   └──────────────────────────────┘
+               │          │          │
+     ┌─────────▼──┐ ┌─────▼─────┐ ┌──▼──────────┐
+     │  Amazon    │ │ Flipkart  │ │   Croma     │
+     │ pre-built  │ │ Scraper   │ │  Scraper    │
+     │ pipeline:  │ │ Studio    │ │  Studio     │
+     │ amazon_    │ │ collector │ │  collector  │
+     │ product_   │ │ (AI-built)│ │  (AI-built) │
+     │ search     │ └─────┬─────┘ └──┬──────────┘
+     └─────────┬──┘       │          │
+               │          └──────────┘
+               ▼    Bright Data CLI (bdata)
+        proxies · CAPTCHA solving · JS rendering · unblocking
+```
+
+## How the Scrapers Work
+
+PriceGuard uses the right Bright Data tool for each store:
+
+| Store | Method | Why |
+|-------|--------|-----|
+| Amazon | Pre-built pipeline `amazon_product_search` via `bdata pipelines` | Managed dataset, structured output out of the box |
+| Flipkart | **Scraper Studio** custom collector via `bdata scraper run` | No pre-built pipeline — AI Agent builds and owns the scraper |
+| Croma | **Scraper Studio** custom collector via `bdata scraper run` | Same as above |
+
+### The Self-Healing Loop
+
+Websites change constantly. PriceGuard treats extraction failures as first-class signals and repairs scrapers automatically using Scraper Studio's heal API:
+
+```
+ 1. RUN        bdata pipelines / bdata scraper run
+       │
+ 2. VALIDATE   schema checks on extracted JSON:
+       │       • record with valid price exists?
+       │       • price > 0 and plausible vs target?
+       │       • title matches requested product? (token overlap)
+       ▼
+ 3. RETRY      transient failures get one automatic retry
+       │
+ 4. HEAL       if validation still fails on a Studio collector:
+       │       bdata scraper heal <collector_id> "<failure reason>" --auto-approve
+       │       → Bright Data AI rewrites the broken selectors,
+       │         same collector_id, non-destructive on failure
+       ▼
+ 5. RE-RUN     verify the healed scraper produces valid data
+       │
+ 6. FALLBACK   if everything fails: serve last known good data
+               flagged stale:true + raise a "Stale data" alert
+```
+
+Every step is tracked per product in `data/cache.json`: attempts, successes, failures, heals, last error. The Scraper Health page shows these **real** success rates — nothing is hardcoded.
 
 ## Tech Stack
 
 - **Backend:** Node.js, Express.js
 - **Frontend:** Vanilla HTML, CSS, JavaScript
-- **Scraping:** Bright Data CLI (`@brightdata/cli`) with managed pipelines
+- **Scraping:** Bright Data CLI (`@brightdata/cli`) — Web Scraper API pipelines + Scraper Studio collectors with AI self-healing
 - **Stores:** Amazon India, Flipkart, Croma
 
 ## Project Structure
 
 ```
 PriceGuardAI/
-├── public/                 # Frontend static files
-│   ├── css/style.css      # Styles
+├── public/                     # Frontend static files
+│   ├── css/style.css           # Styles
 │   ├── js/
-│   │   ├── api.js         # API client utilities
-│   │   ├── app.js         # Sidebar toggle logic
-│   │   ├── components/    # Reusable UI components
-│   │   └── pages/         # Page-specific scripts
-│   ├── index.html         # Dashboard
-│   ├── products.html      # Products page
-│   ├── alerts.html        # Alerts page
-│   ├── scrapers.html      # Scraper status page
-│   └── settings.html      # Settings page
+│   │   ├── api.js              # API client utilities
+│   │   ├── app.js              # Sidebar toggle logic
+│   │   ├── components/         # Reusable UI components
+│   │   └── pages/              # Page-specific scripts
+│   ├── index.html              # Dashboard
+│   ├── products.html           # Products page
+│   ├── alerts.html             # Alerts page
+│   ├── scrapers.html           # Scraper health page
+│   └── settings.html           # Settings page
+├── lib/
+│   ├── scraperEngine.js        # Store routing, CLI execution, JSON parsing, validation
+│   └── healer.js               # Retry + self-healing orchestration, health stats
 ├── routes/
-│   └── products.js        # API routes & scraper logic
-├── server.js              # Express server entry point
+│   └── products.js             # API routes & caching
+├── scripts/
+│   └── setup-scrapers.js       # One-time: creates Studio collectors for Flipkart/Croma
+├── data/
+│   ├── cache.json              # Product cache v2 + health stats + settings
+│   └── collectors.json         # Scraper Studio collector IDs (created by setup)
+├── server.js                   # Express server entry point
 └── package.json
 ```
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18+)
-- [Bright Data CLI](https://www.brightdata.com/) account and API access
+- A [Bright Data](https://www.brightdata.com/) account (free tier includes 5,000 credits/month)
 
 ## Installation
 
@@ -58,13 +144,21 @@ npm install
 
 ## Configuration
 
-Set up your Bright Data credentials and ensure the `@brightdata/cli` is authenticated:
+Authenticate the Bright Data CLI:
 
 ```bash
 npx -p @brightdata/cli bdata login
 ```
 
-Create a `.env` file if needed:
+Then create the Scraper Studio collectors for Flipkart and Croma (one-time, takes a few minutes — the AI Agent builds both scrapers):
+
+```bash
+npm run setup:scrapers
+```
+
+This writes `data/collectors.json`. You can inspect or edit each collector in the [Studio dashboard](https://brightdata.com/cp/scrapers) at the printed `view_url`.
+
+Optional `.env`-style environment variable:
 
 ```env
 PORT=3000
@@ -73,39 +167,39 @@ PORT=3000
 ## Running the App
 
 ```bash
-# Start the server
 npm start
 ```
 
 The app will be available at [http://localhost:3000](http://localhost:3000).
 
+The app starts in **Demo mode** (sample data, instant load). To go live, toggle **Settings → Demo mode OFF** — from then on every request runs through the real scraping pipeline with validation, retries, and self-healing.
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/products` | Fetch all monitored products with live prices |
-| GET | `/api/products/:id` | Fetch a specific product by ID |
-| GET | `/api/alerts` | Fetch all active alerts (price drops, stock, errors) |
+| GET | `/api/products` | All monitored products with live prices + health stats |
+| GET | `/api/products/:id` | Specific product by ID |
+| GET | `/api/alerts` | Active alerts (price drops, stock, errors, stale data) |
+| GET | `/api/health` | Aggregate scraper health: success rates & heal counts per store |
+| GET/POST | `/api/mode` | Get/toggle demo vs live mode |
+| GET/POST | `/api/settings` | Monitoring interval (15/30/60/360 minutes) |
+| POST | `/api/refresh` | Trigger manual live refresh |
+| GET | `/api/categories` | Category → product ID map |
+| GET | `/api/compare?ids=a,b` | Compare products within a category |
 
 ## Monitored Product Categories
 
 | Category | Store | Target Price |
 |----------|-------|-------------|
-| Smartphones | Amazon | ₹30,000 |
-| Laptops | Amazon | ₹60,000 |
-| Headphones | Amazon | ₹5,000 |
-| Smartwatches | Amazon | ₹15,000 |
-| Tablets | Amazon | ₹30,000 |
-| Cameras | Amazon | ₹40,000 |
-| Gaming Consoles | Amazon | ₹40,000 |
-| Televisions | Flipkart | ₹35,000 |
-| Air Conditioners | Flipkart | ₹30,000 |
-| Washing Machines | Flipkart | ₹25,000 |
-| Refrigerators | Flipkart | ₹30,000 |
-| Speakers | Croma | ₹5,000 |
-| Earphones | Croma | ₹2,000 |
-| Monitors | Amazon | ₹20,000 |
-| Printers | Amazon | ₹15,000 |
+| Smartphones | Amazon, Flipkart | ₹30,000–₹65,000 |
+| Laptops | Amazon, Flipkart | ₹65,000–₹120,000 |
+| Headphones | Amazon, Croma | ₹3,000–₹50,000 |
+| Smartwatches | Amazon, Flipkart | ₹15,000–₹45,000 |
+| Tablets | Amazon, Flipkart | ₹30,000–₹60,000 |
+| Televisions | Flipkart | ₹35,000–₹100,000 |
+| Gaming Consoles | Amazon, Flipkart | ₹30,000–₹45,000 |
+| Air Conditioners | Flipkart | ₹32,000–₹42,000 |
 
 ## License
 
