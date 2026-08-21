@@ -3,3 +3,5 @@ node_modules/
 *.log
 data/cache.json
 data/collectors.json
+
+.vercel

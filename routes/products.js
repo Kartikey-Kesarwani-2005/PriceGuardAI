@@ -6,7 +6,9 @@ const { scrapeWithHealing, getStats, successRate, emptyStats } = require('../lib
 
 let USE_DEMO = true;
 
-const CACHE_FILE = path.join(__dirname, '..', 'data', 'cache.json');
+const CACHE_FILE = process.env.VERCEL
+    ? path.join('/tmp', 'cache.json')
+    : path.join(__dirname, '..', 'data', 'cache.json');
 const CACHE_VERSION = 2;
 
 function defaultSettings() {
@@ -263,7 +265,7 @@ function scheduleRefresh() {
         }
     }, 60000);
 }
-scheduleRefresh();
+if (!process.env.VERCEL) scheduleRefresh();
 
 router.get('/mode', (req, res) => {
     res.json({ demo: USE_DEMO, lastRefresh: fileCache.lastRefresh, refreshing });
