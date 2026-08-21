@@ -10,7 +10,7 @@
     "setup:scrapers": "node scripts/setup-scrapers.js"
   },
   "keywords": ["price-monitoring", "bright-data", "scraping", "scraper-studio", "self-healing"],
-  "author": "Kartikey Kesarwani",
+  "author": "Dev X",
   "license": "ISC",
   "type": "commonjs",
   "repository": {

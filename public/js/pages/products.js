@@ -84,13 +84,22 @@ loadCategories();
 loadProducts();
 
 const search = document.getElementById('productSearch');
+function filterProducts() {
+    const value = search.value.toLowerCase().trim();
+    renderProducts(allProducts.filter(p =>
+        p.name.toLowerCase().includes(value) || p.category.toLowerCase().includes(value) || p.store.toLowerCase().includes(value)
+    ));
+}
 if (search) {
-    search.addEventListener('input', () => {
-        const value = search.value.toLowerCase().trim();
-        renderProducts(allProducts.filter(p =>
-            p.name.toLowerCase().includes(value) || p.category.toLowerCase().includes(value) || p.store.toLowerCase().includes(value)
-        ));
-    });
+    search.addEventListener('input', filterProducts);
+    const urlSearch = new URLSearchParams(window.location.search).get('search');
+    if (urlSearch) {
+        search.value = urlSearch;
+        const applyWhenReady = setInterval(() => {
+            if (allProducts.length) { clearInterval(applyWhenReady); filterProducts(); }
+        }, 100);
+        setTimeout(() => clearInterval(applyWhenReady), 5000);
+    }
 }
 
 const showForm = document.getElementById('showProductForm');
