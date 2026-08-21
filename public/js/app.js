@@ -14,6 +14,19 @@ if (closeSidebar) {
     });
 }
 
+const notificationBtn = document.getElementById('notificationBtn');
+if (notificationBtn) {
+    notificationBtn.addEventListener('click', () => {
+        window.location.href = 'alerts.html';
+    });
+    if (typeof fetchAlerts === 'function') {
+        fetchAlerts().then(alerts => {
+            const dot = notificationBtn.querySelector('.notification-dot');
+            if (dot && (!alerts || !alerts.length)) dot.style.display = 'none';
+        }).catch(() => {});
+    }
+}
+
 const globalSearch = document.getElementById('globalSearch');
 const pageSearch = document.getElementById('productSearch');
 

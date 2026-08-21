@@ -36,7 +36,7 @@ const Layout = {
             <button class="mobile-menu" id="openSidebar">☰</button>
             <div class="search-box"><span>⌕</span><input type="text" id="globalSearch" placeholder="Search products..."></div>
             <div class="header-right">
-                <button class="notification-button">♢<span class="notification-dot"></span></button>
+                <button class="notification-button" id="notificationBtn" title="Alerts">♢<span class="notification-dot"></span></button>
                 <div class="profile">
                     <div class="avatar">D</div>
                     <div class="profile-info"><strong>Dev X</strong><span>Administrator</span></div>
