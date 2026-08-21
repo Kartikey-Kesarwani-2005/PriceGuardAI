@@ -188,6 +188,42 @@ The app starts in **Demo mode** (sample data, instant load). To go live, toggle 
 | GET | `/api/categories` | Category → product ID map |
 | GET | `/api/compare?ids=a,b` | Compare products within a category |
 
+## Structured Output
+
+Every scraper returns clean, validated JSON. Raw listing from the Flipkart Scraper Studio collector:
+
+```json
+{
+  "product_title": "Google Pixel 8 (128 GB)",
+  "current_price": { "value": 55999, "currency": "INR", "symbol": "₹" },
+  "original_price": { "value": 75999, "currency": "INR", "symbol": "₹" },
+  "rating": 4.4,
+  "review_count": 3421,
+  "product_url": "https://www.flipkart.com/google-pixel-8/p/itm..."
+}
+```
+
+Normalized and enriched by PriceGuard before hitting the dashboard:
+
+```json
+{
+  "id": "pixel-8",
+  "name": "Google Pixel 8 (128GB)",
+  "store": "Flipkart",
+  "target": 50000,
+  "price": 55999,
+  "originalPrice": 75999,
+  "availability": "In Stock",
+  "rating": 4.4,
+  "reviews": 3421,
+  "lastChecked": "2026-08-21T14:19:53Z",
+  "_source": "live",
+  "stats": { "attempts": 1, "successes": 1, "failures": 0, "heals": 0, "successRate": 100 }
+}
+```
+
+`_source` tells you exactly where data came from: `live` (fresh scrape), `live-healed` (after an auto-repair), `stale` (last known good), or `demo` (sample data). Records that fail validation never reach the UI as wrong prices — they surface as errors or stale entries instead.
+
 ## Monitored Product Categories
 
 | Category | Store | Target Price |
