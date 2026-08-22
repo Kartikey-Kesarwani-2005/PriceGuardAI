@@ -761,6 +761,115 @@ h1, h2, h3, h4 {
     border-top: 1px solid var(--stroke);
 }
 
+/* inline login / signup panel */
+.pm-auth {
+    margin-top: 8px;
+    padding-top: 10px;
+
+    border-top: 1px solid var(--stroke);
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    animation: pop-in 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pm-auth-title {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-mid);
+}
+
+.pm-auth-title strong {
+    color: var(--text-hi);
+}
+
+.pm-auth-row {
+    display: flex;
+    gap: 6px;
+}
+
+.pm-auth-row input {
+    flex: 1;
+    min-width: 0;
+
+    border: 1px solid var(--stroke);
+    border-radius: 8px;
+
+    padding: 8px 10px;
+
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-hi);
+    font-size: 11.5px;
+
+    outline: none;
+
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pm-auth-row input::placeholder {
+    color: var(--text-faint);
+}
+
+.pm-auth-row input:focus {
+    border-color: var(--stroke-focus);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16);
+}
+
+.pm-auth-row button {
+    border: none;
+
+    background: var(--grad-brand);
+    color: white;
+
+    font-size: 11px;
+    font-weight: 600;
+
+    border-radius: 8px;
+    padding: 8px 13px;
+
+    transition: filter 0.2s ease, transform 0.15s ease;
+}
+
+.pm-auth-row button:hover {
+    filter: brightness(1.15);
+}
+
+.pm-auth-row button:active {
+    transform: scale(0.96);
+}
+
+.pm-auth-error {
+    font-size: 10.5px;
+    color: var(--red);
+
+    background: rgba(251, 113, 133, 0.08);
+    border: 1px solid rgba(251, 113, 133, 0.28);
+    border-radius: 8px;
+
+    padding: 6px 9px;
+}
+
+.pm-auth-cancel {
+    border: 1px solid var(--stroke);
+    background: transparent;
+
+    color: var(--text-low);
+    font-size: 10.5px;
+    font-weight: 500;
+
+    border-radius: 8px;
+    padding: 6px;
+
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.pm-auth-cancel:hover {
+    color: var(--text-hi);
+    border-color: var(--stroke-strong);
+}
+
 .profile-menu-add input {
     flex: 1;
     min-width: 0;

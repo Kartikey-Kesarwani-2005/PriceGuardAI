@@ -81,6 +81,7 @@ const Layout = {
                 <div class="profile-menu hidden" id="profileMenu">
                     <div class="profile-menu-title">Switch account</div>
                     <div id="profileMenuList"></div>
+                    <div class="pm-auth hidden" id="pmAuth"></div>
                     <div class="profile-menu-add">
                         <input type="text" id="newUserName" maxlength="24" placeholder="New user name...">
                         <button id="addUserBtn">Add</button>

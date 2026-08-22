@@ -30,6 +30,7 @@ if (notificationBtn) {
 const profileBtn = document.getElementById('profileBtn');
 const profileMenu = document.getElementById('profileMenu');
 const profileMenuList = document.getElementById('profileMenuList');
+const pmAuth = document.getElementById('pmAuth');
 
 function saveUsers(users) {
     try { localStorage.setItem('pg_users', JSON.stringify(users)); } catch (e) { /* ignore */ }
@@ -39,8 +40,95 @@ function setCurrentUser(name) {
     try { localStorage.setItem('pg_currentUser', name); } catch (e) { /* ignore */ }
 }
 
+function hashPin(pin) {
+    let h = 5381;
+    const salted = 'pguard::' + pin;
+    for (let i = 0; i < salted.length; i++) h = ((h << 5) + h + salted.charCodeAt(i)) >>> 0;
+    return h.toString(36);
+}
+
+function getPins() {
+    try { return JSON.parse(localStorage.getItem('pg_pins')) || {}; } catch (e) { return {}; }
+}
+
+function savePins(pins) {
+    try { localStorage.setItem('pg_pins', JSON.stringify(pins)); } catch (e) { /* ignore */ }
+}
+
+let authMode = null;
+let authUser = '';
+
+function openAuth(name, mode) {
+    if (!pmAuth) return;
+    authMode = mode;
+    authUser = name;
+
+    pmAuth.innerHTML = `
+        <div class="pm-auth-title">${mode === 'login' ? `Login as <strong>${name}</strong>` : `Create account <strong>${name}</strong>`}</div>
+        <div class="pm-auth-row">
+            <input type="password" id="pmPinInput" maxlength="16" autocomplete="off"
+                placeholder="${mode === 'login' ? 'Enter PIN' : 'Create PIN (min 4 characters)'}">
+            <button id="pmPinSubmit">${mode === 'login' ? 'Login' : 'Create'}</button>
+        </div>
+        <div class="pm-auth-error hidden" id="pmAuthError"></div>
+        <button class="pm-auth-cancel" id="pmAuthCancel">Cancel</button>
+    `;
+    pmAuth.classList.remove('hidden');
+
+    const pinInput = document.getElementById('pmPinInput');
+    setTimeout(() => pinInput && pinInput.focus(), 30);
+    document.getElementById('pmPinSubmit').addEventListener('click', submitAuth);
+    pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+    document.getElementById('pmAuthCancel').addEventListener('click', closeAuth);
+}
+
+function closeAuth() {
+    if (!pmAuth) return;
+    authMode = null;
+    authUser = '';
+    pmAuth.classList.add('hidden');
+    pmAuth.innerHTML = '';
+}
+
+function showAuthError(msg) {
+    const el = document.getElementById('pmAuthError');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+function submitAuth() {
+    const input = document.getElementById('pmPinInput');
+    const pin = input ? input.value : '';
+    if (!pin || pin.length < 4) { showAuthError('PIN must be at least 4 characters.'); return; }
+
+    const pins = getPins();
+
+    if (authMode === 'login') {
+        if (pins[authUser] !== undefined && pins[authUser] !== hashPin(pin)) {
+            showAuthError('Incorrect PIN. Try again.');
+            if (input) { input.value = ''; input.focus(); }
+            return;
+        }
+        pins[authUser] = hashPin(pin);
+        savePins(pins);
+        setCurrentUser(authUser);
+        location.reload();
+        return;
+    }
+
+    const users = Layout.getUsers();
+    users.push({ name: authUser, role: 'Standard Account' });
+    saveUsers(users);
+    pins[authUser] = hashPin(pin);
+    savePins(pins);
+    setCurrentUser(authUser);
+    location.reload();
+}
+
 function renderProfileMenu() {
     if (!profileMenuList) return;
+    closeAuth();
     const users = Layout.getUsers();
     const current = Layout.getCurrentUser();
     profileMenuList.innerHTML = users.map(u => `
@@ -53,8 +141,12 @@ function renderProfileMenu() {
 
     profileMenuList.querySelectorAll('.profile-menu-item').forEach(item => {
         item.addEventListener('click', () => {
-            setCurrentUser(item.dataset.name);
-            location.reload();
+            const name = item.dataset.name;
+            if (name === current.name) {
+                profileMenu.classList.add('hidden');
+                return;
+            }
+            openAuth(name, getPins()[name] !== undefined ? 'login' : 'signup');
         });
     });
 }
@@ -79,15 +171,8 @@ if (profileBtn && profileMenu) {
             const name = newUserName.value.trim();
             if (!name) return;
             const users = Layout.getUsers();
-            if (users.some(u => u.name.toLowerCase() === name.toLowerCase())) {
-                setCurrentUser(name);
-                location.reload();
-                return;
-            }
-            users.push({ name, role: 'Standard Account' });
-            saveUsers(users);
-            setCurrentUser(name);
-            location.reload();
+            const existing = users.find(u => u.name.toLowerCase() === name.toLowerCase());
+            openAuth(existing ? existing.name : name, existing ? 'login' : 'signup');
         };
         addUserBtn.addEventListener('click', addUser);
         newUserName.addEventListener('keydown', e => { if (e.key === 'Enter') addUser(); });
