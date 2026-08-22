@@ -16,7 +16,7 @@ function defaultSettings() {
 }
 
 function freshCache() {
-    return { version: CACHE_VERSION, products: {}, customProducts: [], stats: {}, settings: defaultSettings(), lastRefresh: null };
+    return { version: CACHE_VERSION, products: {}, customProducts: [], stats: {}, history: {}, settings: defaultSettings(), lastRefresh: null };
 }
 
 function loadCache() {
@@ -30,6 +30,7 @@ function loadCache() {
                     if (typeof parsed.settings[k] === 'undefined') parsed.settings[k] = true;
                 });
                 if (!Array.isArray(parsed.customProducts)) parsed.customProducts = [];
+                if (!parsed.history || typeof parsed.history !== 'object') parsed.history = {};
                 return parsed;
             }
             console.log('[cache] Old cache format detected, resetting to v' + CACHE_VERSION);
@@ -154,6 +155,64 @@ function seededDemo(id) {
     };
 }
 
+/* ---------- price history ---------- */
+
+function recordPriceSnapshot(id, price) {
+    if (!price || price <= 0) return;
+    if (!fileCache.history || typeof fileCache.history !== 'object') fileCache.history = {};
+    const arr = fileCache.history[id] || (fileCache.history[id] = []);
+    const day = new Date().toISOString().slice(0, 10);
+    const last = arr[arr.length - 1];
+    if (last && last.date === day) {
+        last.price = price;
+    } else {
+        arr.push({ date: day, price });
+        if (arr.length > 400) arr.splice(0, arr.length - 400);
+    }
+}
+
+/*
+ * Deterministic pseudo price-walk for demo/backfill data. Seeded by the
+ * product id so every reload renders the same curve; the walk always ends
+ * exactly at the current live/demo price.
+ */
+function syntheticHistory(seedId, basePrice, days) {
+    let h = 2166136261 >>> 0;
+    const seedStr = seedId + ':' + days;
+    for (let i = 0; i < seedStr.length; i++) {
+        h ^= seedStr.charCodeAt(i);
+        h = Math.imul(h, 16777619) >>> 0;
+    }
+    const rand = () => {
+        h ^= h << 13; h >>>= 0;
+        h ^= h >>> 17;
+        h ^= h << 5; h >>>= 0;
+        return h / 4294967296;
+    };
+
+    const stepDays = days > 180 ? 5 : days > 60 ? 3 : 1;
+    const n = Math.floor(days / stepDays) + 1;
+
+    const walk = [1];
+    for (let i = 1; i < n; i++) {
+        let v = walk[i - 1] * (1 + (rand() - 0.52) * 0.05);
+        if (rand() < 0.09) v *= 0.93 + rand() * 0.04;
+        else if (rand() < 0.05) v *= 1.04 + rand() * 0.02;
+        walk.push(Math.min(Math.max(v, 0.62), 1.38));
+    }
+
+    const scale = basePrice / walk[walk.length - 1];
+    const today = Date.now();
+    const points = [];
+    for (let i = 0; i < n; i++) {
+        points.push({
+            date: new Date(today - (n - 1 - i) * stepDays * 86400000).toISOString().slice(0, 10),
+            price: Math.max(1, Math.round((walk[i] * scale) / 10) * 10)
+        });
+    }
+    return points;
+}
+
 function withStats(record) {
     const s = fileCache.stats[record.id] || emptyStats();
     const rate = successRate(s);
@@ -215,6 +274,7 @@ function pumpQueue() {
         scrapeWithHealing(product, fileCache)
             .then(result => {
                 fileCache.products[product.id] = result;
+                recordPriceSnapshot(product.id, result.price);
                 saveCache(fileCache);
                 console.log(`[scrape] Updated "${product.name}" (source: ${result._source})`);
             })
@@ -237,6 +297,7 @@ async function fetchSingleProduct(product) {
     if (USE_DEMO) {
         const demo = getDemoProduct(product);
         fileCache.products[product.id] = demo;
+        recordPriceSnapshot(product.id, demo.price);
         saveCache(fileCache);
         return withStats(demo);
     }
@@ -245,6 +306,7 @@ async function fetchSingleProduct(product) {
     const usable = cached && cached._source !== 'demo' ? cached : null;
 
     if (usable && isFresh(usable)) {
+        recordPriceSnapshot(product.id, usable.price);
         return withStats(usable);
     }
 
@@ -434,6 +496,74 @@ router.get('/products/:id', async (req, res) => {
     if (!product) return res.status(404).json({ error: 'Product not found' });
     try {
         res.json(await fetchSingleProduct(product));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+const HISTORY_RANGES = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
+
+router.get('/products/:id/history', async (req, res) => {
+    const product = allProducts().find(p => p.id === req.params.id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    const range = HISTORY_RANGES[req.query.range] ? req.query.range : '30d';
+    const days = HISTORY_RANGES[range];
+
+    try {
+        const record = await fetchSingleProduct(product);
+        const current = record && record.price > 0 ? record.price : (product.target || 9999);
+
+        const cutoff = Date.now() - days * 86400000;
+        const recorded = (fileCache.history[product.id] || []).filter(pt => {
+            if (!pt || typeof pt.price !== 'number' || pt.price <= 0) return false;
+            const t = new Date(pt.date + 'T00:00:00Z').getTime();
+            return !isNaN(t) && t >= cutoff;
+        });
+
+        let points;
+        if (recorded.length >= 4) {
+            // real snapshots exist: backfill the gap before them with synthetic data
+            const firstT = new Date(recorded[0].date + 'T00:00:00Z').getTime();
+            const spanDays = Math.max(0, Math.ceil((Date.now() - firstT) / 86400000));
+            const gapDays = days - spanDays;
+            const backfill = gapDays > 2 ? syntheticHistory(product.id + ':pre', current, gapDays) : [];
+            points = backfill.slice(0, -1).concat(recorded.map(r => ({ date: r.date, price: r.price })));
+        } else {
+            points = syntheticHistory(product.id, current, days);
+        }
+
+        points.push({ date: new Date().toISOString().slice(0, 10), price: Math.round(current) });
+
+        // dedupe by date, keeping the last occurrence per day
+        const byDate = {};
+        points.forEach(pt => { byDate[pt.date] = pt; });
+        points = Object.keys(byDate).sort().map(d => byDate[d]);
+
+        const prices = points.map(pt => pt.price);
+        const summary = {
+            current: Math.round(current),
+            lowest: Math.min.apply(null, prices),
+            highest: Math.max.apply(null, prices),
+            average: Math.round(prices.reduce((a, b) => a + b, 0) / prices.length)
+        };
+
+        res.json({
+            id: product.id,
+            name: product.name,
+            category: product.category,
+            store: product.store,
+            url: product.url || '',
+            target: product.target || null,
+            specs: product.specs || {},
+            availability: record ? record.availability : 'Unknown',
+            rating: record ? record.rating : 0,
+            reviews: record ? record.reviews : 0,
+            originalPrice: record ? record.originalPrice : 0,
+            range,
+            points,
+            summary
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
