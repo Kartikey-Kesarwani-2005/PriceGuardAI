@@ -12,11 +12,11 @@ const CACHE_FILE = process.env.VERCEL
 const CACHE_VERSION = 2;
 
 function defaultSettings() {
-    return { intervalMinutes: 15 };
+    return { intervalMinutes: 15, monitoring: true, notifications: true };
 }
 
 function freshCache() {
-    return { version: CACHE_VERSION, products: {}, stats: {}, settings: defaultSettings(), lastRefresh: null };
+    return { version: CACHE_VERSION, products: {}, customProducts: [], stats: {}, settings: defaultSettings(), lastRefresh: null };
 }
 
 function loadCache() {
@@ -26,6 +26,10 @@ function loadCache() {
             if (parsed && parsed.version === CACHE_VERSION) {
                 if (!parsed.stats) parsed.stats = {};
                 if (!parsed.settings) parsed.settings = defaultSettings();
+                ['monitoring', 'notifications'].forEach(k => {
+                    if (typeof parsed.settings[k] === 'undefined') parsed.settings[k] = true;
+                });
+                if (!Array.isArray(parsed.customProducts)) parsed.customProducts = [];
                 return parsed;
             }
             console.log('[cache] Old cache format detected, resetting to v' + CACHE_VERSION);
@@ -133,6 +137,23 @@ let refreshing = false;
 let lastRefreshTick = Date.now();
 const inFlight = new Set();
 
+function allProducts() {
+    return products.concat(fileCache.customProducts || []);
+}
+
+function seededDemo(id) {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    const price = 2999 + (h % 76) * 999;
+    return {
+        price,
+        originalPrice: Math.round(price * 1.28),
+        availability: 'In Stock',
+        rating: Math.round((40 + ((h >> 3) % 9)) / 2) / 10,
+        reviews: 500 + (h % 20000)
+    };
+}
+
 function withStats(record) {
     const s = fileCache.stats[record.id] || emptyStats();
     const rate = successRate(s);
@@ -150,7 +171,7 @@ function withStats(record) {
 }
 
 function getDemoProduct(product) {
-    const d = demoPrices[product.id] || { price: 0, originalPrice: 0, availability: 'Unknown', rating: 0, reviews: 0 };
+    const d = demoPrices[product.id] || seededDemo(product.id);
     return {
         ...product,
         price: d.price,
@@ -234,15 +255,15 @@ async function fetchSingleProduct(product) {
 }
 
 async function fetchAllProducts() {
-    return Promise.all(products.map(p => fetchSingleProduct(p)));
+    return Promise.all(allProducts().map(p => fetchSingleProduct(p)));
 }
 
 async function refreshAllProducts() {
     if (refreshing) return;
     refreshing = true;
-    console.log(`[refresh] Live refresh started (${products.length} products)...`);
+    console.log(`[refresh] Live refresh started (${allProducts().length} products)...`);
     try {
-        await Promise.all(products.map(p => fetchSingleProduct(p)));
+        await Promise.all(allProducts().map(p => fetchSingleProduct(p)));
         const deadline = Date.now() + 600000;
         while (inFlight.size > 0 && Date.now() < deadline) {
             await new Promise(r => setTimeout(r, 1000));
@@ -257,7 +278,7 @@ async function refreshAllProducts() {
 
 function scheduleRefresh() {
     setInterval(() => {
-        if (USE_DEMO || refreshing) return;
+        if (USE_DEMO || refreshing || fileCache.settings.monitoring === false) return;
         const intervalMs = (fileCache.settings.intervalMinutes || 15) * 60 * 1000;
         if (Date.now() - lastRefreshTick >= intervalMs) {
             lastRefreshTick = Date.now();
@@ -282,20 +303,34 @@ router.get('/settings', (req, res) => {
 });
 
 router.post('/settings', (req, res) => {
-    const allowed = [15, 30, 60, 360];
-    const minutes = parseInt(req.body && req.body.intervalMinutes, 10);
-    if (!allowed.includes(minutes)) {
-        return res.status(400).json({ error: `intervalMinutes must be one of ${allowed.join(', ')}` });
+    const body = req.body || {};
+    let changed = false;
+
+    if (typeof body.intervalMinutes !== 'undefined') {
+        const allowed = [15, 30, 60, 360];
+        const minutes = parseInt(body.intervalMinutes, 10);
+        if (!allowed.includes(minutes)) {
+            return res.status(400).json({ error: `intervalMinutes must be one of ${allowed.join(', ')}` });
+        }
+        fileCache.settings.intervalMinutes = minutes;
+        changed = true;
     }
-    fileCache.settings.intervalMinutes = minutes;
-    saveCache(fileCache);
+
+    ['monitoring', 'notifications'].forEach(key => {
+        if (typeof body[key] === 'boolean') {
+            fileCache.settings[key] = body[key];
+            changed = true;
+        }
+    });
+
+    if (changed) saveCache(fileCache);
     res.json(fileCache.settings);
 });
 
 router.get('/health', (req, res) => {
     const perStore = {};
     let totalAttempts = 0, totalSuccesses = 0, totalHeals = 0;
-    products.forEach(p => {
+    allProducts().forEach(p => {
         const s = fileCache.stats[p.id] || emptyStats();
         if (!perStore[p.store]) perStore[p.store] = { attempts: 0, successes: 0, heals: 0, collectors: [] };
         perStore[p.store].attempts += s.attempts;
@@ -315,7 +350,7 @@ router.get('/health', (req, res) => {
         lastRefresh: fileCache.lastRefresh,
         refreshing,
         totals: {
-            products: products.length,
+            products: allProducts().length,
             attempts: totalAttempts,
             successes: totalSuccesses,
             heals: totalHeals,
@@ -335,18 +370,58 @@ router.post('/refresh', async (req, res) => {
 
 router.get('/categories', async (req, res) => {
     const cats = {};
-    products.forEach(p => {
+    allProducts().forEach(p => {
         if (!cats[p.category]) cats[p.category] = [];
         cats[p.category].push(p.id);
     });
     res.json(cats);
 });
 
+router.post('/products', async (req, res) => {
+    const body = req.body || {};
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const target = Number(body.target);
+
+    if (!name) return res.status(400).json({ error: 'Product name is required' });
+    if (!target || target <= 0) return res.status(400).json({ error: 'Target price must be a positive number' });
+
+    const id = 'custom_' + Date.now().toString(36);
+    let store = 'Custom';
+    try {
+        const host = new URL(body.url).hostname.replace(/^www\./, '');
+        store = host.charAt(0).toUpperCase() + host.slice(1);
+    } catch (e) { /* no/invalid url - keep default store */ }
+
+    const custom = {
+        id,
+        name,
+        category: 'Custom',
+        store,
+        url: body.url || '',
+        target: Math.round(target),
+        specs: {}
+    };
+
+    fileCache.customProducts.push(custom);
+    saveCache(fileCache);
+    console.log(`[custom] Now monitoring "${name}" (id: ${id})`);
+    res.status(201).json(await fetchSingleProduct(custom));
+});
+
+router.delete('/products/:id', (req, res) => {
+    const idx = fileCache.customProducts.findIndex(p => p.id === req.params.id);
+    if (idx === -1) return res.status(400).json({ error: 'Only custom products can be removed' });
+    const removed = fileCache.customProducts.splice(idx, 1)[0];
+    delete fileCache.products[removed.id];
+    saveCache(fileCache);
+    res.json({ ok: true, removed: removed.id });
+});
+
 router.get('/products', async (req, res) => {
     try {
         const category = req.query.category;
-        let list = products;
-        if (category) list = products.filter(p => p.category === category);
+        let list = allProducts();
+        if (category) list = list.filter(p => p.category === category);
         const results = await Promise.all(list.map(p => fetchSingleProduct(p)));
         res.json(results);
     } catch (err) {
@@ -355,7 +430,7 @@ router.get('/products', async (req, res) => {
 });
 
 router.get('/products/:id', async (req, res) => {
-    const product = products.find(p => p.id === req.params.id);
+    const product = allProducts().find(p => p.id === req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
     try {
         res.json(await fetchSingleProduct(product));
@@ -368,7 +443,7 @@ router.get('/compare', async (req, res) => {
     const ids = (req.query.ids || '').split(',').filter(Boolean);
     if (ids.length < 2) return res.status(400).json({ error: 'Select at least 2 products to compare' });
 
-    const matched = ids.map(id => products.find(p => p.id === id)).filter(Boolean);
+    const matched = ids.map(id => allProducts().find(p => p.id === id)).filter(Boolean);
     if (matched.length < 2) return res.status(400).json({ error: 'Products not found' });
 
     const categories = [...new Set(matched.map(p => p.category))];

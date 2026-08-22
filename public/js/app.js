@@ -119,3 +119,30 @@ if (globalSearch) {
         });
     }
 }
+
+document.addEventListener('keydown', e => {
+    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+
+    if (e.key === '/' && !typing && globalSearch) {
+        e.preventDefault();
+        globalSearch.focus();
+        return;
+    }
+
+    if (e.key === 'Escape') {
+        if (profileMenu && !profileMenu.classList.contains('hidden')) profileMenu.classList.add('hidden');
+        if (sidebar && sidebar.classList.contains('sidebar-open')) sidebar.classList.remove('sidebar-open');
+        const compareModal = document.getElementById('compareModal');
+        if (compareModal && !compareModal.classList.contains('hidden')) compareModal.classList.add('hidden');
+        if (globalSearch === document.activeElement) globalSearch.blur();
+    }
+});
+
+(async function applyNotificationPreference() {
+    try {
+        const res = await fetch('/api/settings');
+        const settings = await res.json();
+        const dot = notificationBtn && notificationBtn.querySelector('.notification-dot');
+        if (dot && settings.notifications === false) dot.style.display = 'none';
+    } catch (e) { /* ignore */ }
+})();

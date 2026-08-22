@@ -111,22 +111,40 @@ if (showForm) showForm.addEventListener('click', () => form.classList.toggle('hi
 if (cancel) cancel.addEventListener('click', () => form.classList.add('hidden'));
 
 if (startMonitoring) {
-    startMonitoring.addEventListener('click', () => {
+    startMonitoring.addEventListener('click', async () => {
         const name = document.getElementById('productName').value;
+        const url = document.getElementById('productUrl').value.trim();
         const target = Number(document.getElementById('targetPrice').value);
         if (!name || !target) { alert('Please enter product name and target price.'); return; }
 
-        allProducts.push({
-            id: 'custom_' + Date.now(), name, category: 'Custom', store: 'Custom', target,
-            price: 0, originalPrice: 0, availability: 'Unknown', rating: 0, reviews: 0,
-            specs: {}, lastChecked: new Date().toISOString()
-        });
+        const originalText = startMonitoring.textContent;
+        startMonitoring.disabled = true;
+        startMonitoring.textContent = 'Adding...';
 
-        renderProducts(allProducts);
-        form.classList.add('hidden');
-        document.getElementById('productName').value = '';
-        document.getElementById('targetPrice').value = '';
-        alert('Product added to monitoring!');
+        try {
+            const res = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, target, url })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to add product');
+
+            allProducts.push(data);
+            renderProducts(allProducts);
+            loadCategories();
+
+            form.classList.add('hidden');
+            ['productName', 'targetPrice', 'productUrl'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            startMonitoring.disabled = false;
+            startMonitoring.textContent = originalText;
+        }
     });
 }
 
