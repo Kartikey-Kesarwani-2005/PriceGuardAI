@@ -27,6 +27,73 @@ if (notificationBtn) {
     }
 }
 
+const profileBtn = document.getElementById('profileBtn');
+const profileMenu = document.getElementById('profileMenu');
+const profileMenuList = document.getElementById('profileMenuList');
+
+function saveUsers(users) {
+    try { localStorage.setItem('pg_users', JSON.stringify(users)); } catch (e) { /* ignore */ }
+}
+
+function setCurrentUser(name) {
+    try { localStorage.setItem('pg_currentUser', name); } catch (e) { /* ignore */ }
+}
+
+function renderProfileMenu() {
+    if (!profileMenuList) return;
+    const users = Layout.getUsers();
+    const current = Layout.getCurrentUser();
+    profileMenuList.innerHTML = users.map(u => `
+        <div class="profile-menu-item ${u.name === current.name ? 'active' : ''}" data-name="${u.name}">
+            <span class="avatar avatar-sm">${Layout.initials(u.name)}</span>
+            <span class="pm-info"><strong>${u.name}</strong><small>${u.role}</small></span>
+            ${u.name === current.name ? '<span class="pm-check">✓</span>' : ''}
+        </div>
+    `).join('');
+
+    profileMenuList.querySelectorAll('.profile-menu-item').forEach(item => {
+        item.addEventListener('click', () => {
+            setCurrentUser(item.dataset.name);
+            location.reload();
+        });
+    });
+}
+
+if (profileBtn && profileMenu) {
+    profileBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        renderProfileMenu();
+        profileMenu.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', e => {
+        if (!profileMenu.classList.contains('hidden') && !profileMenu.contains(e.target)) {
+            profileMenu.classList.add('hidden');
+        }
+    });
+
+    const addUserBtn = document.getElementById('addUserBtn');
+    const newUserName = document.getElementById('newUserName');
+    if (addUserBtn && newUserName) {
+        const addUser = () => {
+            const name = newUserName.value.trim();
+            if (!name) return;
+            const users = Layout.getUsers();
+            if (users.some(u => u.name.toLowerCase() === name.toLowerCase())) {
+                setCurrentUser(name);
+                location.reload();
+                return;
+            }
+            users.push({ name, role: 'Standard Account' });
+            saveUsers(users);
+            setCurrentUser(name);
+            location.reload();
+        };
+        addUserBtn.addEventListener('click', addUser);
+        newUserName.addEventListener('keydown', e => { if (e.key === 'Enter') addUser(); });
+    }
+}
+
 const globalSearch = document.getElementById('globalSearch');
 const pageSearch = document.getElementById('productSearch');
 
