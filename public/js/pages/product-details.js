@@ -4,6 +4,7 @@ const RANGE_LABEL = { '7d': 'last 7 days', '30d': 'last 30 days', '90d': 'last 9
 
 let productId = null;
 let historyData = null;
+let productRecord = null;
 let currentRange = '30d';
 
 function esc(s) {
@@ -57,12 +58,15 @@ async function loadHistory(range) {
         historyData = await res.json();
     } catch (err) {
         if (wrap) wrap.innerHTML = '<div class="error">Could not load price history</div>';
+        const ip = document.getElementById('intelPanel');
+        if (ip) ip.innerHTML = '<div class="state-card slim"><p>Deal intelligence unavailable for this product right now.</p></div>';
         return;
     }
 
     renderHeader(historyData);
     renderStats(historyData);
     renderFacts(historyData);
+    renderIntel(historyData);
     drawChart();
 
     if (sub) {
@@ -131,6 +135,88 @@ function renderFacts(d) {
         ['MRP', d.originalPrice ? fmtINR(d.originalPrice) : '—'],
         ['Your target', d.target ? fmtINR(d.target) : 'Not set']
     ]);
+}
+
+/* ---------- deal intelligence (explainable score + recommendation) ---------- */
+
+function renderIntel(d) {
+    const host = document.getElementById('intelPanel');
+    if (!host || !d || !d.summary) return;
+
+    /* shape the /history payload into the product format Intel expects */
+    const p = {
+        id: d.id,
+        name: d.name,
+        category: d.category,
+        store: d.store,
+        price: d.summary.current,
+        originalPrice: d.originalPrice,
+        target: d.target,
+        availability: d.availability,
+        rating: d.rating,
+        reviews: d.reviews,
+        lastChecked: productRecord ? productRecord.lastChecked : null,
+        stale: productRecord ? productRecord.stale : false,
+        error: productRecord ? productRecord.error : undefined,
+        _source: productRecord ? productRecord._source : undefined
+    };
+    const hist = { points: d.points, range: d.range };
+
+    const factors = Intel.factors(p, hist);
+    const score = Intel.dealScore(p, hist);
+    const vd = Intel.verdict(p, hist);
+    const q = Intel.quality(p, hist);
+    const fresh = Intel.freshness(p);
+
+    const factorRows = factors.map(f => `
+        <div class="if-row">
+            <div class="if-info">
+                <strong>${esc(f.label)}</strong>
+                <small>${esc(f.note)}</small>
+            </div>
+            <div class="if-bar"><i style="width:${Math.max(3, Math.round(f.pts / f.max * 100))}%"></i></div>
+            <span class="if-pts">${f.pts}<em>/${f.max}</em></span>
+        </div>`).join('');
+
+    const segOrder = ['Excellent', 'Good', 'Average', 'High'];
+    const hotIdx = segOrder.indexOf(q.label);
+    const meter = `<div class="meter intel-meter">` + segOrder.map((lbl, i) =>
+        `<span class="seg${i === hotIdx ? ` on hot s${i}` : ''}">${lbl}</span>`
+    ).join('') + `</div>`;
+
+    const avg = d.summary.average;
+    const vsAvgPct = Math.round((avg - p.price) / avg * 100);
+    const disc = Intel.discount(p);
+
+    const chips = [
+        vsAvgPct !== 0 ? `${vsAvgPct > 0 ? '↓' : '↑'} ${Math.abs(vsAvgPct)}% vs ${d.range.toUpperCase()} avg` : null,
+        d.summary.lowest ? `${d.range.toUpperCase()} low ${fmtCompact(d.summary.lowest)}` : null,
+        disc > 0 ? `${disc}% off MRP` : null,
+        p.rating ? `★ ${p.rating}` : null
+    ].filter(Boolean).map(c => `<span class="chip chip-sm">${esc(c)}</span>`).join('');
+
+    host.innerHTML = `
+        <div class="intel-main">
+            <div class="intel-score">
+                ${Intel.scoreRing(score)}
+                <div class="intel-verdict">
+                    <span class="verdict-pill lg ${vd.tone}">${esc(vd.label)}</span>
+                    <p>${esc(vd.reason)}</p>
+                </div>
+            </div>
+            <div class="intel-side">
+                <span class="fresh-chip ${fresh.cls}"><i></i>${esc(fresh.label)}</span>
+                <span class="chip chip-sm">${esc(q.label)} time to buy</span>
+            </div>
+        </div>
+        <div class="intel-factors">
+            <h4>Why this score</h4>
+            ${factorRows}
+        </div>
+        <div class="intel-foot">
+            <div class="chip-row mini">${chips}</div>
+            ${meter}
+        </div>`;
 }
 
 /* ---------- chart engine ---------- */
@@ -298,6 +384,7 @@ document.querySelectorAll('#rangeTabs .cat-tab').forEach(btn => {
     try {
         const res = await fetch('/api/products/' + encodeURIComponent(productId));
         if (!res.ok) throw new Error('Product not found');
+        productRecord = await res.json();
         await loadHistory(currentRange);
         if (loading) loading.classList.add('hidden');
         if (content) content.classList.remove('hidden');

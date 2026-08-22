@@ -165,7 +165,7 @@ function bwTile(p) {
     <a class="bw-tile" href="product-details.html?id=${encodeURIComponent(p.id)}">
         <div class="bw-head">
             <span class="bw-name">${Intel.esc(p.name)}</span>
-            <span class="verdict-pill ${vd.buy ? 'v-buy' : 'v-wait'}">${Intel.esc(vd.label)}</span>
+            <span class="verdict-pill ${vd.tone || (vd.buy ? 'v-buy' : 'v-wait')}">${Intel.esc(vd.label)}</span>
         </div>
         <div class="bw-price"><strong>${formatPrice(p.price)}</strong> ${mrp}</div>
         <div class="bw-reason">${Intel.esc(vd.reason)}</div>
@@ -296,7 +296,7 @@ function renderSpotlight(p) {
             <a class="chip chip-sm" href="${detailsHref}">${Layout.icons.bell} Set target</a>
         </div>
         <div class="spot-verdict">
-            <span class="verdict-pill lg ${vd.buy ? 'v-buy' : 'v-wait'}">${Intel.esc(vd.label)}</span>
+            <span class="verdict-pill lg ${vd.tone || (vd.buy ? 'v-buy' : 'v-wait')}">${Intel.esc(vd.label)}</span>
             <span class="vd-reason">${Intel.esc(vd.reason)}</span>
         </div>
         <div class="meter" role="img" aria-label="Current price level: ${Intel.esc(q.label)}">

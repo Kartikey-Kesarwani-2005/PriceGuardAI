@@ -154,72 +154,118 @@ const Intel = {
         return { label: 'High', cls: 'q-high' };
     },
 
-    /* composite 0-99 deal score from real signals only */
-    dealScore(p, hist) {
-        let s = 0;
+    /* transparent scoring buckets — the Deal Score is literally the sum of these */
+    factors(p, hist) {
         const price = p.price || 0;
+        const out = [];
 
         /* 0-35: proximity to your target */
+        let tPts = 0, tNote = 'Set a target to unlock this signal';
         if (p.target && price) {
-            if (price <= p.target) s += 35;
-            else s += Math.max(0, 35 - ((price - p.target) / p.target * 100) * 2.2);
+            if (price <= p.target) {
+                tPts = 35;
+                tNote = 'At or below your ' + formatPrice(p.target) + ' target';
+            } else {
+                const overPct = ((price - p.target) / p.target * 100);
+                tPts = Math.max(0, 35 - overPct * 2.2);
+                tNote = Math.round(overPct) + '% above your ' + formatPrice(p.target) + ' target';
+            }
         }
+        out.push({ key: 'target', label: 'Target fit', pts: tPts, max: 35, note: tNote });
 
-        /* 0-30: below typical price (history avg when available, else MRP gap) */
+        /* 0-30: below typical price (history average when available, else MRP gap) */
+        let tpPts = 0, tpNote = '';
         if (hist && hist.points && hist.points.length > 3) {
             const prices = hist.points.map(pt => pt.price);
             const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
             const diffPct = avg ? (avg - price) / avg * 100 : 0;
-            s += diffPct >= 0 ? Math.min(30, diffPct * 3) : Math.max(0, 30 + diffPct * 1.5);
+            tpPts = diffPct >= 0 ? Math.min(30, diffPct * 3) : Math.max(0, 30 + diffPct * 1.5);
+            tpNote = (diffPct >= 0 ? Math.round(diffPct) + '% below' : Math.round(-diffPct) + '% above') +
+                ' ' + String(hist.range).toUpperCase() + ' average (' + this.fmtCompact(avg) + ')';
         } else {
-            s += Math.min(30, this.discount(p) * 1.2);
+            const d = this.discount(p);
+            tpPts = Math.min(30, d * 1.2);
+            tpNote = d > 0 ? d + '% off list price' : 'Trading at full list price';
         }
+        out.push({ key: 'typical', label: 'Vs typical price', pts: tpPts, max: 30, note: tpNote });
 
         /* 0-20: MRP discount depth */
-        s += Math.min(20, this.discount(p) * 0.8);
+        const dsc = this.discount(p);
+        out.push({
+            key: 'mrp', label: 'MRP discount',
+            pts: Math.min(20, dsc * 0.8), max: 20,
+            note: dsc > 0
+                ? dsc + '% off MRP' + (p.originalPrice ? ' (' + this.fmtCompact(p.originalPrice) + ')' : '')
+                : 'No discount vs MRP'
+        });
 
         /* 0-10: availability */
         const stock = getStockStatus(p.availability);
-        s += stock === 'In Stock' ? 10 : stock === 'Low Stock' ? 5 : 0;
+        out.push({
+            key: 'stock', label: 'Availability',
+            pts: stock === 'In Stock' ? 10 : stock === 'Low Stock' ? 5 : 0, max: 10,
+            note: stock === 'In Stock' ? 'In stock - ready to order'
+                : stock === 'Low Stock' ? 'Low stock' : 'Stock unknown'
+        });
 
         /* 0-5: data freshness */
         const fr = this.freshness(p);
-        s += fr.cls === 'live' ? 5 : fr.cls === 'recent' || fr.cls === 'demo' ? 3 : 0;
+        out.push({
+            key: 'fresh', label: 'Data freshness',
+            pts: fr.cls === 'live' ? 5 : fr.cls === 'recent' || fr.cls === 'demo' ? 3 : 0, max: 5,
+            note: fr.label
+        });
 
-        return Math.max(1, Math.min(99, Math.round(s)));
+        out.forEach(f => { f.pts = Math.round(f.pts); });
+        return out;
     },
 
-    /* buy/wait recommendation with an honest, data-backed reason */
+    /* composite 0-100 deal score = sum of the explainable factor buckets */
+    dealScore(p, hist) {
+        const raw = this.factors(p, hist).reduce((a, f) => a + f.pts, 0);
+        return Math.max(1, Math.min(100, raw));
+    },
+
+    /* three-tier recommendation with an honest, data-backed reason */
     verdict(p, hist) {
         const stock = getStockStatus(p.availability);
         if (stock === 'Out of Stock') {
-            return { buy: false, label: 'Unavailable', reason: 'Out of stock right now' };
+            return { buy: false, tier: 'na', tone: 'v-wait', label: 'Wait', reason: 'Out of stock right now - check back later' };
         }
 
         if (p.target && p.price && p.price <= p.target) {
-            return { buy: true, label: 'Buy now', reason: 'At or below your ₹' + Number(p.target).toLocaleString('en-IN') + ' target' };
+            return {
+                buy: true, tier: 'buy', tone: 'v-buy', label: 'Buy now',
+                reason: 'At or below your ' + formatPrice(p.target) + ' target price'
+            };
         }
 
         if (hist && hist.points && hist.points.length > 3) {
             const prices = hist.points.map(pt => pt.price);
             const lo = Math.min.apply(null, prices);
-            const hi = Math.max.apply(null, prices);
             const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+            const rng = String(hist.range).toUpperCase();
+
             if (p.price <= lo * 1.02) {
-                return { buy: true, label: 'Buy now', reason: 'Near the ' + hist.range.toUpperCase() + ' low of ' + this.fmtCompact(lo) };
+                return { buy: true, tier: 'buy', tone: 'v-buy', label: 'Buy now', reason: 'Near the ' + rng + ' low of ' + this.fmtCompact(lo) };
             }
-            if (p.price < avg) {
-                const pct = Math.round((avg - p.price) / avg * 100);
-                return { buy: true, label: 'Buy now', reason: pct + '% below ' + hist.range.toUpperCase() + ' average' };
+            const belowAvg = Math.round((avg - p.price) / avg * 100);   /* >0 means cheaper than average */
+            if (belowAvg >= 8) {
+                return { buy: true, tier: 'buy', tone: 'v-buy', label: 'Buy now', reason: belowAvg + '% below ' + rng + ' average (' + this.fmtCompact(avg) + ')' };
             }
-            const above = Math.round((p.price - avg) / avg * 100);
-            return { buy: false, label: 'Wait', reason: above + '% above ' + hist.range.toUpperCase() + ' average' };
+            if (belowAvg >= 2) {
+                return { buy: true, tier: 'good', tone: 'v-mid', label: 'Good deal', reason: 'Only ' + belowAvg + '% below ' + rng + ' average - fair, not a steal' };
+            }
+            if (belowAvg >= -3) {
+                return { buy: false, tier: 'good', tone: 'v-mid', label: 'Good deal', reason: 'Roughly at the ' + rng + ' average - reasonable time to buy' };
+            }
+            return { buy: false, tier: 'wait', tone: 'v-wait', label: 'Wait', reason: Math.round(-belowAvg) + '% above ' + rng + ' average - historically cheaper' };
         }
 
         const d = this.discount(p);
-        if (d >= 18) return { buy: true, label: 'Buy now', reason: d + '% off MRP' };
-        if (d >= 8) return { buy: true, label: 'Buy now', reason: d + '% below list price' };
-        return { buy: false, label: 'Wait', reason: 'Price close to MRP - wait for a dip' };
+        if (d >= 18) return { buy: true, tier: 'buy', tone: 'v-buy', label: 'Buy now', reason: d + '% off MRP - deep discount' };
+        if (d >= 8) return { buy: true, tier: 'good', tone: 'v-mid', label: 'Good deal', reason: d + '% below list price - fair deal' };
+        return { buy: false, tier: 'wait', tone: 'v-wait', label: 'Wait', reason: 'Price close to MRP - wait for a dip' };
     },
 
     scoreTone(score) {
@@ -380,7 +426,7 @@ function buildProductCard(product, opts) {
             <div class="pcard-verdict">
                 ${intel.scoreRing(score)}
                 <span class="score-cap">Deal<br>score</span>
-                <span class="verdict-pill ${vd.buy ? 'v-buy' : 'v-wait'}">${intel.esc(vd.label)}</span>
+                <span class="verdict-pill ${vd.tone || (vd.buy ? 'v-buy' : 'v-wait')}">${intel.esc(vd.label)}</span>
             </div>
             <div class="vd-reason">${intel.esc(vd.reason)}</div>
             <div class="pcard-actions">
