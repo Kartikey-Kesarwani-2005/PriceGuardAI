@@ -1,17 +1,23 @@
 const alertsList = document.getElementById('alertsList');
+const caughtUp = document.querySelector('.caught-up');
+
+function showCaughtUp(show) {
+    if (caughtUp) caughtUp.classList.toggle('hidden', !show);
+}
 
 async function renderAlerts() {
     if (!alertsList) return;
     alertsList.innerHTML = '<div class="loading">Loading alerts...</div>';
+    showCaughtUp(false);
 
     try {
         const alerts = await fetchAlerts();
-        alertsList.innerHTML = '';
+        showCaughtUp(alerts.length === 0);
+        alertsList.classList.toggle('hidden', alerts.length === 0);
 
-        if (alerts.length === 0) {
-            alertsList.innerHTML = '<div class="loading">No alerts right now</div>';
-            return;
-        }
+        if (alerts.length === 0) return;
+
+        alertsList.innerHTML = '';
 
         alerts.forEach(a => {
             const row = document.createElement('div');
@@ -31,6 +37,7 @@ async function renderAlerts() {
             alertsList.appendChild(row);
         });
     } catch (err) {
+        showCaughtUp(false);
         alertsList.innerHTML = '<div class="error">Error loading alerts</div>';
     }
 }

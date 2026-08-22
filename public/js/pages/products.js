@@ -7,6 +7,14 @@ let categories = {};
 async function renderProducts(productList) {
     if (!table) return;
     table.innerHTML = '';
+
+    if (productList.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="7" class="empty-cell">No products match your filters. Try a different search or category.</td>';
+        table.appendChild(row);
+        return;
+    }
+
     productList.forEach(product => {
         const row = document.createElement('tr');
         row.innerHTML = renderProductRow(product, true);
@@ -130,6 +138,7 @@ if (startMonitoring) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to add product');
 
+            activeCategory = null;
             allProducts.push(data);
             renderProducts(allProducts);
             loadCategories();

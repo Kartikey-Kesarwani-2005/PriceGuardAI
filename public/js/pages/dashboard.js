@@ -6,6 +6,13 @@ async function renderDashboard() {
 
     try {
         const products = await fetchProducts();
+
+        if (products.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="6" class="empty-cell">No products are being monitored yet. Add one from the Products page.</td>';
+            dashboardTable.appendChild(row);
+        }
+
         products.forEach(product => {
             const row = document.createElement('tr');
             row.innerHTML = renderProductRow(product);
@@ -14,6 +21,9 @@ async function renderDashboard() {
         updateStats(products);
     } catch (err) {
         console.error('Error rendering dashboard:', err);
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="6" class="empty-cell error-text">Could not load products. Is the server running?</td>';
+        dashboardTable.appendChild(row);
     }
 }
 
@@ -49,7 +59,8 @@ async function loadLastRefresh() {
 
 async function manualRefresh() {
     const btn = document.getElementById('refreshBtn');
-    if (btn) { btn.textContent = 'Refreshing...'; btn.disabled = true; }
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.innerHTML = 'Refreshing...'; btn.disabled = true; }
     try {
         await fetch('/api/refresh', { method: 'POST' });
         const poll = setInterval(async () => {
@@ -64,7 +75,7 @@ async function manualRefresh() {
         }, 3000);
         setTimeout(() => { clearInterval(poll); location.reload(); }, 180000);
     } catch (e) {
-        if (btn) { btn.textContent = 'Refresh Data'; btn.disabled = false; }
+        if (btn) { btn.innerHTML = originalHtml; btn.disabled = false; }
     }
 }
 

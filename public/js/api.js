@@ -85,9 +85,9 @@ function renderProductRow(product, showCheckbox) {
 
     return `
         ${checkbox}
-        <td><strong>${product.name}</strong><br><span class="muted" style="font-size:10px">${product.category}</span></td>
+        <td><strong>${product.name}</strong><span class="cell-sub">${product.category}</span></td>
         <td class="muted">${product.store}</td>
-        <td><strong>${price}</strong>${discount > 0 ? `<br><span class="stock-good" style="font-size:10px">${discount}% off</span>` : ''}</td>
+        <td><strong>${price}</strong>${discount > 0 ? `<span class="discount-tag">${discount}% off</span>` : ''}</td>
         <td class="muted">${target}</td>
         <td><span class="${stockClass}">${stockStatus}</span></td>
         <td><span class="status-badge ${statusClass}">${healthStatus}</span></td>`;

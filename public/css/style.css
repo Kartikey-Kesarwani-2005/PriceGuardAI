@@ -29,9 +29,9 @@
 
     /* ink */
     --text-hi: #eef1fa;
-    --text-mid: #a6b0c5;
-    --text-low: #68738f;
-    --text-faint: #49536e;
+    --text-mid: #aab4c9;
+    --text-low: #74809c;
+    --text-faint: #5b6784;
 
     /* brand */
     --indigo: #818cf8;
@@ -987,78 +987,6 @@ h1, h2, h3, h4 {
     background: rgba(251, 113, 133, 0.04);
 }
 
-/* admin gate */
-.admin-banner {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-
-    padding: 13px 16px;
-
-    font-size: 12px;
-    color: var(--amber);
-
-    background: rgba(251, 191, 36, 0.07);
-    border: 1px solid rgba(251, 191, 36, 0.25);
-    border-radius: var(--r-md);
-}
-
-.admin-banner svg {
-    width: 17px;
-    height: 17px;
-    flex-shrink: 0;
-}
-
-.admin-banner strong {
-    color: var(--text-hi);
-}
-
-.settings-card.locked,
-.interval-card.locked,
-.account-card.locked {
-    position: relative;
-    overflow: hidden;
-}
-
-.settings-card.locked > *,
-.interval-card.locked > *,
-.account-card.locked > * {
-    filter: blur(6px);
-    pointer-events: none;
-    user-select: none;
-}
-
-.settings-card.locked::after,
-.interval-card.locked::after,
-.account-card.locked::after {
-    content: '🔒  Admin access only';
-
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 12.5px;
-    font-weight: 600;
-    letter-spacing: 0.4px;
-    color: var(--text-mid);
-
-    background: rgba(5, 8, 14, 0.35);
-}
-
-.toggle:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-select:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 .profile-menu-add input {
     flex: 1;
     min-width: 0;
@@ -1454,6 +1382,48 @@ td strong {
 
 .muted {
     color: var(--text-low);
+}
+
+.cell-sub {
+    display: block;
+    margin-top: 3px;
+
+    color: var(--text-faint);
+    font-size: 10.5px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.discount-tag {
+    display: inline-block;
+    margin-left: 8px;
+
+    padding: 2px 8px;
+
+    border-radius: 999px;
+
+    background: rgba(52, 211, 153, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.28);
+
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    vertical-align: middle;
+}
+
+.empty-cell {
+    padding: 34px 22px !important;
+
+    text-align: center;
+
+    color: var(--text-low);
+    font-size: 12.5px;
+    font-style: italic;
+}
+
+.error-text {
+    color: var(--red);
 }
 
 

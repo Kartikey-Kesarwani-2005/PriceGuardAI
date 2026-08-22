@@ -40,62 +40,44 @@ function getPins() {
     try { return JSON.parse(localStorage.getItem('pg_pins')) || {}; } catch (e) { return {}; }
 }
 
-/* ---------- sensitive settings are admin-only; page stays visible ---------- */
+/* ---------- settings are open to everyone ---------- */
 
 const currentUser = Layout.getCurrentUser();
-if (!isAdminUser()) {
-    const page = document.querySelector('.page');
 
-    document.querySelectorAll('.toggle, #interval').forEach(el => { el.disabled = true; });
-    document.querySelectorAll('.settings-card, .interval-card').forEach(c => c.classList.add('locked'));
+async function hydrate() {
+    const [mode, settings] = await Promise.all([apiGet('/api/mode'), apiGet('/api/settings')]);
 
-    if (page) {
-        page.insertAdjacentHTML('afterbegin', `
-            <div class="admin-banner">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                Sensitive settings are restricted to Admin. You are signed in as <strong>${currentUser ? currentUser.name : 'Guest'}</strong> (${currentUser ? currentUser.role : 'No role'}). Account management below is available to everyone.
-            </div>
-        `);
+    applyToggleState(demoToggle, mode && mode.demo);
+
+    if (settings) {
+        settingToggles.forEach(t => applyToggleState(t, settings[t.dataset.setting]));
+        if (interval && settings.intervalMinutes) interval.value = String(settings.intervalMinutes);
     }
-} else {
-
-    /* ---------- admin-only wiring ---------- */
-
-    async function hydrate() {
-        const [mode, settings] = await Promise.all([apiGet('/api/mode'), apiGet('/api/settings')]);
-
-        applyToggleState(demoToggle, mode && mode.demo);
-
-        if (settings) {
-            settingToggles.forEach(t => applyToggleState(t, settings[t.dataset.setting]));
-            if (interval && settings.intervalMinutes) interval.value = String(settings.intervalMinutes);
-        }
-    }
-
-    if (demoToggle) {
-        demoToggle.addEventListener('click', () => {
-            const enabled = !demoToggle.classList.contains('toggle-on');
-            applyToggleState(demoToggle, enabled);
-            apiPost('/api/mode', { demo: enabled });
-        });
-    }
-
-    settingToggles.forEach(toggle => {
-        toggle.addEventListener('click', () => {
-            const enabled = !toggle.classList.contains('toggle-on');
-            applyToggleState(toggle, enabled);
-            apiPost('/api/settings', { [toggle.dataset.setting]: enabled });
-        });
-    });
-
-    if (interval) {
-        interval.addEventListener('change', () => {
-            apiPost('/api/settings', { intervalMinutes: parseInt(interval.value, 10) });
-        });
-    }
-
-    hydrate();
 }
+
+if (demoToggle) {
+    demoToggle.addEventListener('click', () => {
+        const enabled = !demoToggle.classList.contains('toggle-on');
+        applyToggleState(demoToggle, enabled);
+        apiPost('/api/mode', { demo: enabled });
+    });
+}
+
+settingToggles.forEach(toggle => {
+    toggle.addEventListener('click', () => {
+        const enabled = !toggle.classList.contains('toggle-on');
+        applyToggleState(toggle, enabled);
+        apiPost('/api/settings', { [toggle.dataset.setting]: enabled });
+    });
+});
+
+if (interval) {
+    interval.addEventListener('change', () => {
+        apiPost('/api/settings', { intervalMinutes: parseInt(interval.value, 10) });
+    });
+}
+
+hydrate();
 
 /* ---------- account management (all users, delete needs PIN) ---------- */
 
