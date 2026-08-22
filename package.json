@@ -4,10 +4,10 @@
   "description": "AI-powered price monitoring with Bright Data scrapers",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "test": "node --test test/",
-    "setup:scrapers": "node scripts/setup-scrapers.js"
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --env-file-if-exists=.env server.js",
+    "test": "node --env-file-if-exists=.env --test \"test/**/*.test.js\"",
+    "setup:scrapers": "node --env-file-if-exists=.env scripts/setup-scrapers.js"
   },
   "keywords": [
     "price-monitoring",

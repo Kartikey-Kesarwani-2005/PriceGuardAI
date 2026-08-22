@@ -1,4 +1,4 @@
-const { execCmd, loadCollectors, saveCollectors, STORE_CONFIG } = require('../lib/scraperEngine');
+const { execCmd, loadCollectors, saveCollectors, collectorsFileFor, KEY_POOL, COLLECTORS_FILE } = require('../lib/scraperEngine');
 
 const DESCRIPTION = 'Extract product listings from this e-commerce search results page. IMPORTANT: do NOT follow pagination links and do NOT navigate into product detail pages - process only the first results page in a single pass to avoid rate limits. For each visible listing capture: title/name of product, current selling price in INR, original MRP or list price, availability or stock status, rating out of 5, number of reviews, and the product URL.';
 
@@ -21,7 +21,18 @@ async function createStoreCollector(storeKey, label) {
 }
 
 async function main() {
-    const collectors = loadCollectors();
+    const sel = (process.argv[2] || '').toLowerCase();
+    const m = /^k(\d+)$/.exec(sel);
+    const keyIdx = m ? parseInt(m[1], 10) - 1 : 0;
+    if (m) {
+        if (!KEY_POOL[keyIdx]) {
+            throw new Error(`Key #${keyIdx + 1} not found. BRIGHTDATA_API_KEYS has ${KEY_POOL.length} key(s) in .env`);
+        }
+        process.env.BRIGHTDATA_API_KEY = KEY_POOL[keyIdx];
+        console.log(`[setup] Using API key #${keyIdx + 1} from pool`);
+    }
+    const collectorsFile = collectorsFileFor(keyIdx);
+    const collectors = loadCollectors(keyIdx);
     let created = 0;
 
     for (const [key, label] of [['flipkart', 'Flipkart'], ['croma', 'Croma']]) {
@@ -37,7 +48,7 @@ async function main() {
                 view_url: env.view_url,
                 created_at: new Date().toISOString()
             };
-            saveCollectors(collectors);
+            saveCollectors(collectors, collectorsFile);
             created++;
         } catch (e) {
             console.error(`[setup] Failed to create ${key} collector:`, e.message);
@@ -46,7 +57,7 @@ async function main() {
     }
 
     console.log(`\n[setup] Done. ${created} collector(s) created.`);
-    console.log('[setup] Collectors file:', require('../lib/scraperEngine').COLLECTORS_FILE);
+    console.log('[setup] Collectors file:', m ? collectorsFile : COLLECTORS_FILE);
 }
 
 main();
