@@ -202,7 +202,7 @@ The app starts in **Demo mode** (sample data, instant load). To go live, toggle 
 
 ## Demo Walkthrough (2 minutes)
 
-1. **Open the problem** — prices for the same product vary across Amazon, Flipkart and Croma, and deals disappear fast. PriceGuard watches 29 products across all three stores so you don't have to.
+1. **Open the problem** — prices for the same product vary across Amazon, Flipkart and Croma, and deals disappear fast. PriceGuard watches 160 products across all three stores so you don't have to.
 2. **Dashboard** (`/`) — instant overview in demo mode; point out target-price hits and discount alerts.
 3. **Go live** — Settings → toggle **Demo mode OFF**, then hit **Refresh Data** on the dashboard. The scraper queue starts filling real prices (Amazon lands within seconds; Flipkart/Croma batch jobs take a few minutes).
 4. **Insights** (`/scrapers.html`) — market pulse tiles (falling/stable/rising), best deals ranked by Deal Score with Buy/Wait verdicts, and a featured trend chart for any product.
