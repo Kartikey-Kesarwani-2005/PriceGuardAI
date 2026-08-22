@@ -2880,6 +2880,14 @@ select option {
 .xt-start { text-anchor: start; }
 .xt-end { text-anchor: end; }
 
+/* Charts stretch to their panel — never overflow it on resize/rotate */
+.spot-svg {
+    display: block;
+
+    width: 100%;
+    height: auto;
+}
+
 .price-line {
     fill: none;
 
@@ -4098,7 +4106,7 @@ select option {
    ALERTS PREVIEW
 ======================== */
 
-.alerts-preview { display: grid; gap: 10px; }
+.alerts-preview { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
 
 .alert-mini {
     display: flex;

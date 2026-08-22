@@ -122,17 +122,12 @@ const Layout = {
     },
 
     renderPage(activePage, pageTitle, pageDescription, contentHtml) {
+        /* NOTE: returns a FRAGMENT (sidebar + main) — NOT an .app wrapper.
+           The page's <div class="app" id="app"> host IS the .app shell.
+           Nesting another .app inside it makes the inner one a flex item
+           whose min-width:auto stretches to max-content and overflows
+           the viewport on laptops. */
         return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="PriceGuard AI - Price and inventory intelligence">
-    <title>${pageTitle} - PriceGuard AI</title>
-</head>
-<body>
-    <div class="app">
         ${this.renderSidebar(activePage)}
         <div class="main">
             ${this.renderHeader()}
@@ -145,7 +140,6 @@ const Layout = {
                     ${contentHtml}
                 </section>
             </main>
-        </div>
-    </div>`;
+        </div>`;
     }
 };

@@ -233,7 +233,7 @@ function drawSpotChart(p) {
     }
 
     host.innerHTML = `
-        <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+        <svg viewBox="0 0 ${W} ${H}" class="spot-svg" preserveAspectRatio="none" role="img" aria-label="Price trend chart">
             <defs><linearGradient id="spFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="#6366f1" stop-opacity="0.30"/>
                 <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>

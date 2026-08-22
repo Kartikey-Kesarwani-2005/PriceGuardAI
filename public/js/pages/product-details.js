@@ -368,7 +368,7 @@ function drawChart() {
     }
 
     wrap.innerHTML = `
-        <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" id="histSvg">
+        <svg viewBox="0 0 ${W} ${H}" class="spot-svg" preserveAspectRatio="none" id="histSvg">
             <defs>
                 <linearGradient id="pgFill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stop-color="#6366f1" stop-opacity="0.32"/>
