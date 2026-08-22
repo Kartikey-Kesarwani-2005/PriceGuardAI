@@ -40,18 +40,9 @@ function setCurrentUser(name) {
     try { localStorage.setItem('pg_currentUser', name); } catch (e) { /* ignore */ }
 }
 
-function ensureAdminUser() {
-    const users = Layout.getUsers();
-    if (users.some(u => u.role === 'Admin')) return;
-    users[0] = { ...users[0], role: 'Admin' };
-    saveUsers(users);
-}
-
-ensureAdminUser();
-
 function isAdminUser() {
     const user = Layout.getCurrentUser();
-    return !!user && user.role === 'Admin';
+    return !!user && (user.role === 'Admin' || user.role === 'Pro Account');
 }
 
 function hashPin(pin) {

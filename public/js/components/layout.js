@@ -43,14 +43,22 @@ const Layout = {
     },
 
     getUsers() {
+        let users;
         try {
             const raw = localStorage.getItem('pg_users');
             if (raw) {
-                const users = JSON.parse(raw);
-                if (Array.isArray(users) && users.length) return users;
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length) users = parsed;
             }
         } catch (e) { /* ignore */ }
-        return [{ name: 'Dev X', role: 'Admin' }];
+
+        if (!users) return [{ name: 'Dev X', role: 'Admin' }];
+
+        if (!users.some(u => u.role === 'Admin')) {
+            users[0] = { ...users[0], role: 'Admin' };
+            try { localStorage.setItem('pg_users', JSON.stringify(users)); } catch (e) { /* ignore */ }
+        }
+        return users;
     },
 
     getCurrentUser() {
