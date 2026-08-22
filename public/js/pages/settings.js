@@ -27,6 +27,7 @@ async function apiPost(url, body) {
 function applyToggleState(toggle, enabled) {
     if (!toggle) return;
     toggle.classList.toggle('toggle-on', !!enabled);
+    toggle.setAttribute('aria-checked', String(!!enabled));
 }
 
 function hashPin(pin) {

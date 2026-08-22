@@ -42,8 +42,8 @@ const Layout = {
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-logo">
                 <div class="logo-icon">${this.icons.shield}</div>
-                <div><h1>PriceGuard</h1><p>Price Intelligence</p></div>
-                <button class="mobile-close" id="closeSidebar">&times;</button>
+                <div><span class="logo-word">PriceGuard</span><p>Price Intelligence</p></div>
+                <button class="mobile-close" id="closeSidebar" aria-label="Close menu">&times;</button>
             </div>
             <nav class="sidebar-nav">${nav}</nav>
             <div class="sidebar-bottom">

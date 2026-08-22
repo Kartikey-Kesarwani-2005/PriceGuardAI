@@ -67,32 +67,6 @@ function getHealthStatus(product) {
     return 'Healthy';
 }
 
-function renderProductRow(product, showCheckbox) {
-    const stockStatus = getStockStatus(product.availability);
-    const stockClass = stockStatus === 'In Stock' ? 'stock-good' :
-                      stockStatus === 'Low Stock' ? 'stock-warning' : 'stock-danger';
-
-    const healthStatus = getHealthStatus(product);
-    const statusClass = healthStatus === 'Healthy' ? 'badge-success' :
-                      healthStatus === 'Error' ? 'badge-danger' : 'badge-warning';
-
-    const price = formatPrice(product.price);
-    const target = formatPrice(product.target);
-    const checkbox = showCheckbox ? `<td><input type="checkbox" class="compare-check" data-id="${product.id}" data-category="${product.category}"></td>` : '';
-    const discount = product.price && product.originalPrice && product.originalPrice > product.price
-        ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-        : 0;
-
-    return `
-        ${checkbox}
-        <td><a class="row-link" href="product-details.html?id=${encodeURIComponent(product.id)}"><strong>${product.name}</strong><span class="cell-sub">${product.category}</span></a></td>
-        <td class="muted">${product.store}</td>
-        <td><strong>${price}</strong>${discount > 0 ? `<span class="discount-tag">${discount}% off</span>` : ''}</td>
-        <td class="muted">${target}</td>
-        <td><span class="${stockClass}">${stockStatus}</span></td>
-        <td><span class="status-badge ${statusClass}">${healthStatus}</span></td>`;
-}
-
 
 /* ============================================================
    PRICE INTELLIGENCE LAYER
