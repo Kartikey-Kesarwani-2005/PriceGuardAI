@@ -16,7 +16,34 @@
 
     <script src="js/components/layout.js"></script>
     <script>
-        document.getElementById('app').innerHTML = Layout.renderPage('insights', 'Insights', 'Where your deals come from — and how trustworthy the data is.', `
+        document.getElementById('app').innerHTML = Layout.renderPage('insights', 'Insights', 'What the market is doing — and how trustworthy your data is.', `
+            <div class="section-head">
+                <div><span class="eyebrow">Price intelligence</span><h3>Market pulse</h3></div>
+            </div>
+            <div class="dh-body always-open" id="piStats">
+                <div class="skel row-skel"></div>
+            </div>
+
+            <div class="section-head">
+                <div><span class="eyebrow">Best deals now</span><h3>Highest deal scores across tracked prices</h3></div>
+            </div>
+            <div class="cards-grid" id="piDeals">
+                <div class="skel block-skel"></div><div class="skel block-skel"></div><div class="skel block-skel"></div>
+            </div>
+
+            <div class="section-head">
+                <div><span class="eyebrow">Trend tracker</span><h3>Every tracked price, explained</h3></div>
+            </div>
+            <div class="chart-panel inner" id="piFeature">
+                <div class="skel block-skel"></div>
+            </div>
+            <div class="table-card">
+                <div class="table-header"><h3>Price intelligence by product</h3></div>
+                <div class="pi-list" id="piList">
+                    <div class="skel row-skel"></div><div class="skel row-skel"></div><div class="skel row-skel"></div>
+                </div>
+            </div>
+
             <div class="section-head">
                 <div><span class="eyebrow">Store comparison</span><h3>Reliability by store</h3></div>
             </div>
