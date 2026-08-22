@@ -4,6 +4,8 @@ AI-powered price monitoring and inventory intelligence platform that tracks prod
 
 ## Features
 
+### Tracking engine
+
 - **Multi-store Price Tracking** — Monitors products across Amazon, Flipkart, and Croma
 - **Target Price Alerts** — Get notified when product prices drop below your desired target
 - **Stock Monitoring** — Tracks product availability and flags out-of-stock items
@@ -12,15 +14,33 @@ AI-powered price monitoring and inventory intelligence platform that tracks prod
 - **Real Health Metrics** — Per-product success rates, failure reasons, and heal counts (no fake numbers)
 - **Stale-Safe Fallback** — If live extraction fails, last known good data is served with an explicit "stale" flag instead of wrong data
 - **Discount Detection** — Identifies products with significant price drops (20%+ off)
-- **Dashboard** — Real-time overview of all monitored products, scraper health, and price alerts
+- **Price History** — Tracked price snapshots per product with 7d/30d/90d/1y views
+
+### Intelligence layer (client-side, deterministic)
+
+- **Deal Score (0–100)** — Explainable score built from five transparent buckets: target fit (35), vs typical price (30), MRP discount (20), availability (10), data freshness (5)
+- **Buy / Wait verdicts** — Three-tier recommendation (Buy now · Good deal · Wait) with a data-backed reason for every call
+- **Trend detection** — Falling / Stable / Rising classification from tracked history points
+- **Price Insights** — Plain-language explanation of what the numbers mean, generated only from real tracked prices
+
+### Experience layer
+
+- **Premium dark dashboard** — Glassmorphism UI with hero search, live stats, spotlight deal and a trending rail
+- **Watchlist** — Star any product; the watchlist shows Deal Score, Buy/Wait status and price movement since you starred it (baseline price captured at star time), with quick actions: View, Set Alert, Remove
+- **Device-local price alerts** — Set a target price on any card; a progress zone tracks how far the current price is from your target, with savings preview
+- **Insights page** — Market pulse (falling/stable/rising counts), best deals ranked by Deal Score, featured trend chart and per-product intelligence rows
+- **Product comparison** — Side-by-side spec comparison within a category
+- **Fully responsive** — Verified with automated overflow audits at 1280–1536px laptop widths and 390/768px mobile layouts
+- **Accessible** — WCAG AA contrast tokens, single heading hierarchy per page, keyboard focus states, labelled icon buttons and switch semantics
 
 ## Architecture
 
 ```
                         ┌─────────────────────────────────────────────┐
                         │              Frontend (vanilla JS)          │
-                        │  Dashboard · Products · Alerts · Scraper    │
-                        │  Health · Settings                          │
+                        │  Dashboard · Products · Compare · Alerts    │
+                        │  Watchlist · Insights · Details · Settings  │
+                        │  + Intel scoring · PGWatch · PGAlerts       │
                         └──────────────────┬──────────────────────────┘
                                            │ /api/*
                         ┌──────────────────▼──────────────────────────┐
@@ -101,28 +121,34 @@ Every step is tracked per product in `data/cache.json`: attempts, successes, fai
 ```
 PriceGuardAI/
 ├── public/                     # Frontend static files
-│   ├── css/style.css           # Styles
+│   ├── css/style.css           # Styles (design tokens, components, responsive)
 │   ├── js/
-│   │   ├── api.js              # API client utilities
-│   │   ├── app.js              # Sidebar toggle logic
-│   │   ├── components/         # Reusable UI components
-│   │   └── pages/              # Page-specific scripts
-│   ├── index.html              # Dashboard
-│   ├── products.html           # Products page
-│   ├── alerts.html             # Alerts page
-│   ├── scrapers.html           # Scraper health page
-│   └── settings.html           # Settings page
+│   │   ├── api.js              # API client + Intel scoring + PGWatch/PGAlerts storage
+│   │   ├── app.js              # Sidebar toggle, profile menu, notification badge
+│   │   ├── components/layout.js# Shared shell: sidebar, header, page scaffold
+│   │   └── pages/              # Page scripts (dashboard, products, watchlist,
+│   │                           #  alerts, scrapers/insights, details, settings)
+│   ├── index.html              # Dashboard (hero search, stats, spotlight, rail)
+│   ├── products.html           # Products + compare selection
+│   ├── product-details.html    # Price history graph, deal intelligence, alert card
+│   ├── alerts.html             # Server alerts + device-local target alerts
+│   ├── watchlist.html          # Starred products with movement since starring
+│   ├── scrapers.html           # Insights: market pulse, best deals, trends,
+│   │                           #  store reliability and advanced scraper monitors
+│   └── settings.html           # Demo mode, monitoring interval, PIN lock
 ├── lib/
 │   ├── scraperEngine.js        # Store routing, CLI execution, JSON parsing, validation
 │   └── healer.js               # Retry + self-healing orchestration, health stats
 ├── routes/
-│   └── products.js             # API routes & caching
+│   └── products.js             # API routes, caching & price history snapshots
 ├── scripts/
 │   └── setup-scrapers.js       # One-time: creates Studio collectors for Flipkart/Croma
 ├── data/
-│   ├── cache.json              # Product cache v2 + health stats + settings
+│   ├── cache.json              # Product cache v2 + health stats + settings + history
 │   └── collectors.json         # Scraper Studio collector IDs (created by setup)
 ├── server.js                   # Express server entry point
+├── .overflow_audit.js          # Headless-Chrome horizontal-overflow audit (dev tool)
+├── .ux_audit.js                # Headless UX/a11y audit: links, states, headings (dev tool)
 └── package.json
 ```
 
@@ -179,9 +205,23 @@ The app starts in **Demo mode** (sample data, instant load). To go live, toggle 
 1. **Open the problem** — prices for the same product vary across Amazon, Flipkart and Croma, and deals disappear fast. PriceGuard watches 29 products across all three stores so you don't have to.
 2. **Dashboard** (`/`) — instant overview in demo mode; point out target-price hits and discount alerts.
 3. **Go live** — Settings → toggle **Demo mode OFF**, then hit **Refresh Data** on the dashboard. The scraper queue starts filling real prices (Amazon lands within seconds; Flipkart/Croma batch jobs take a few minutes).
-4. **Scraper Health** (`/scrapers.html`) — the star of the demo: real success rates per product, heal counts, stale flags. Explain the loop: *run → validate → retry → auto-heal via Scraper Studio → stale-safe fallback*.
-5. **Show resilience** — point at `data/cache.json`: every failed extraction is logged with its reason (e.g. *"extracted price ₹439 is implausibly low vs target ₹55,000"*), and wrong data never reaches the UI.
-6. **Alerts** (`/alerts.html`) — price drops, stock status, and honest error/stale alerts side by side.
+4. **Insights** (`/scrapers.html`) — market pulse tiles (falling/stable/rising), best deals ranked by Deal Score with Buy/Wait verdicts, and a featured trend chart for any product.
+5. **Star a product → Watchlist** (`/watchlist.html`) — Deal Score ring, price movement since starring, and one-tap quick actions (View / Set Alert / Remove).
+6. **Set a target alert** on any product card — the bell popover previews your savings and tracks progress from current price down to your target.
+7. **Scraper monitors** (Insights → Advanced) — real success rates per product, heal counts, stale flags. Explain the loop: *run → validate → retry → auto-heal via Scraper Studio → stale-safe fallback*.
+8. **Show resilience** — point at `data/cache.json`: every failed extraction is logged with its reason (e.g. *"extracted price ₹439 is implausibly low vs target ₹55,000"*), and wrong data never reaches the UI.
+
+## Device-Local Data
+
+Two lightweight layers live in `localStorage` so the demo works without accounts:
+
+| Key | Purpose |
+|-----|---------|
+| `pg_watchlist` | Starred product IDs |
+| `pg_watch_meta` | Per-star timestamp + captured price, powering "movement since starring" |
+| `pg_alerts` | Target-price alerts set from card popovers |
+
+All displayed prices, trends and scores come only from `/api/products` and the tracked history — nothing is fabricated client-side.
 
 ## API Endpoints
 
@@ -189,6 +229,7 @@ The app starts in **Demo mode** (sample data, instant load). To go live, toggle 
 |--------|----------|-------------|
 | GET | `/api/products` | All monitored products with live prices + health stats |
 | GET | `/api/products/:id` | Specific product by ID |
+| GET | `/api/products/:id/history?range=7d\|30d\|90d\|1y` | Tracked price history + summary (current/lowest/highest/average) |
 | GET | `/api/alerts` | Active alerts (price drops, stock, errors, stale data) |
 | GET | `/api/health` | Aggregate scraper health: success rates & heal counts per store |
 | GET/POST | `/api/mode` | Get/toggle demo vs live mode |
