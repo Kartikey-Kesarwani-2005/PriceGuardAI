@@ -11,6 +11,7 @@ AI-powered price monitoring and inventory intelligence platform that tracks prod
 - **Stock Monitoring** — Tracks product availability and flags out-of-stock items
 - **Scraper Studio Integration** — Custom AI-generated scrapers for stores without pre-built pipelines
 - **Self-Healing Scrapers** — Automatic detection of broken extractions and one-command repair via Scraper Studio's heal API
+- **Multi-Key Failover** — Pool multiple Bright Data API keys; an exhausted or rejected key rotates to the next automatically, mid-scrape
 - **Real Health Metrics** — Per-product success rates, failure reasons, and heal counts (no fake numbers)
 - **Stale-Safe Fallback** — If live extraction fails, last known good data is served with an explicit "stale" flag instead of wrong data
 - **Discount Detection** — Identifies products with significant price drops (20%+ off)
@@ -107,7 +108,11 @@ Websites change constantly. PriceGuard treats extraction failures as first-class
                flagged stale:true + raise a "Stale data" alert
 ```
 
+The loop is also resilient at the account level: multiple Bright Data API keys form a pool (`BRIGHTDATA_API_KEYS`) and exhausted/rejected keys rotate automatically mid-scrape.
+
 Every step is tracked per product in `data/cache.json`: attempts, successes, failures, heals, last error. The Scraper Health page shows these **real** success rates — nothing is hardcoded.
+
+> **How to read the numbers:** a success rate below 100% is expected and honest — e-commerce pages change constantly, so some extractions legitimately fail validation (implausible price vs target, mismatched title). Every failure is logged with its exact reason (visible on the Insights page and in `data/cache.json`), the `heals` counter shows where Scraper Studio's AI rewrote broken selectors, and `stale` flags mark products being served from their last known good snapshot instead of wrong data.
 
 ## Tech Stack
 
@@ -142,7 +147,8 @@ PriceGuardAI/
 ├── routes/
 │   └── products.js             # API routes, caching & price history snapshots
 ├── scripts/
-│   └── setup-scrapers.js       # One-time: creates Studio collectors for Flipkart/Croma
+│   ├── setup-scrapers.js       # One-time: creates Studio collectors for Flipkart/Croma
+│   └── collect-keys.js         # Gathers API keys from `bdata login` sessions into a pool
 ├── data/
 │   ├── cache.json              # Product cache v2 + health stats + settings + history
 │   └── collectors.json         # Scraper Studio collector IDs (created by setup)
@@ -170,25 +176,35 @@ npm install
 
 ## Configuration
 
-Authenticate the Bright Data CLI:
+PriceGuard reads its Bright Data API keys from a `.env` file (Node loads it natively via `--env-file-if-exists`, so no OS-specific shell commands are needed):
 
 ```bash
-npx -p @brightdata/cli bdata login
+cp .env.example .env
 ```
-
-Then create the Scraper Studio collectors for Flipkart and Croma (one-time, takes a few minutes — the AI Agent builds both scrapers):
-
-```bash
-npm run setup:scrapers
-```
-
-This writes `data/collectors.json`. You can inspect or edit each collector in the [Studio dashboard](https://brightdata.com/cp/scrapers) at the printed `view_url`.
-
-Optional `.env`-style environment variable:
 
 ```env
-PORT=3000
+# Comma-separated pool of API keys - rotation across accounts is automatic
+BRIGHTDATA_API_KEYS=key1,key2,key3
 ```
+
+Get each key from [Account Settings → API keys](https://brightdata.com/cp/setting/users) → **Add API key** (use **Ops** permissions; no billing access needed).
+
+Collecting keys from multiple free-tier teammate accounts? Use the helper — for each account run `bdata login`, then save the key:
+
+```bash
+npx -p @brightdata/cli bdata login      # browser opens, log in with that account
+node scripts/collect-keys.js add        # saves the stored key to data/bd-keys.txt (gitignored)
+node scripts/collect-keys.js            # list collected keys + ready-to-paste pool string
+```
+
+Then create the Scraper Studio collectors for Flipkart and Croma (one-time per account, takes a few minutes — the AI Agent builds both scrapers):
+
+```bash
+npm run setup:scrapers        # uses key #1 from the pool
+npm run setup:scrapers -- k2  # creates collectors for key #2's account -> data/collectors-k2.json
+```
+
+You can inspect or edit each collector in the [Studio dashboard](https://brightdata.com/cp/scrapers) at the printed `view_url`.
 
 ## Running the App
 

@@ -3,8 +3,24 @@ const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 const { scrapeWithHealing, getStats, successRate, emptyStats } = require('../lib/healer');
+const { STORE_CONFIG } = require('../lib/scraperEngine');
 
 let USE_DEMO = true;
+
+function canonicalStore(url) {
+    try {
+        const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+        for (const name of Object.keys(STORE_CONFIG)) {
+            const cfg = STORE_CONFIG[name];
+            if (cfg.searchUrl && new URL(cfg.searchUrl('x')).hostname.replace(/^www\./, '') === host) return name;
+            if (host === name.toLowerCase() + '.com' || host === name.toLowerCase() + '.in') return name;
+        }
+        if (/amazon\./.test(host)) return 'Amazon';
+        if (/flipkart\./.test(host)) return 'Flipkart';
+        if (/croma\./.test(host)) return 'Croma';
+        return host.charAt(0).toUpperCase() + host.slice(1);
+    } catch (e) { return 'Custom'; }
+}
 
 const CACHE_FILE = process.env.VERCEL
     ? path.join('/tmp', 'cache.json')
@@ -608,11 +624,7 @@ router.post('/products', async (req, res) => {
     if (!target || target <= 0) return res.status(400).json({ error: 'Target price must be a positive number' });
 
     const id = 'custom_' + Date.now().toString(36);
-    let store = 'Custom';
-    try {
-        const host = new URL(body.url).hostname.replace(/^www\./, '');
-        store = host.charAt(0).toUpperCase() + host.slice(1);
-    } catch (e) { /* no/invalid url - keep default store */ }
+    const store = canonicalStore(body.url);
 
     const custom = {
         id,
