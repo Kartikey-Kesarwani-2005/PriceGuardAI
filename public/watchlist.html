@@ -17,6 +17,7 @@
     <script src="js/components/layout.js"></script>
     <script>
         document.getElementById('app').innerHTML = Layout.renderPage('watchlist', 'Watchlist', 'Products you starred — tracked on this device.', `
+            <div class="stats-grid home-stats" id="watchSummary"></div>
             <div class="cards-grid" id="watchGrid"></div>
         `);
     </script>

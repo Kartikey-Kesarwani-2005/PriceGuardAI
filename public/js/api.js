@@ -338,16 +338,47 @@ const Intel = {
 
 const PGWatch = {
     KEY: 'pg_watchlist',
+    META_KEY: 'pg_watch_meta',   /* id -> {addedAt, priceAtAdd} so the list can show movement since starring */
     get() {
-        try { return JSON.parse(localStorage.getItem(this.KEY)) || []; } catch (e) { return []; }
+        try {
+            const raw = JSON.parse(localStorage.getItem(this.KEY));
+            return Array.isArray(raw) ? raw.filter(x => typeof x === 'string') : [];
+        } catch (e) { return []; }
     },
     has(id) { return this.get().indexOf(id) !== -1; },
-    toggle(id) {
+    toggle(id, priceAtAdd) {
         const list = this.get();
         const i = list.indexOf(id);
-        if (i === -1) list.push(id); else list.splice(i, 1);
+        if (i === -1) {
+            list.push(id);
+            this._meta(m => { m[id] = {
+                addedAt: new Date().toISOString(),
+                priceAtAdd: Number(priceAtAdd) > 0 ? Math.round(Number(priceAtAdd)) : null
+            }; });
+        } else {
+            list.splice(i, 1);
+            this._meta(m => { delete m[id]; });
+        }
         try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
         return i === -1;
+    },
+    remove(id) {
+        const list = this.get();
+        const i = list.indexOf(id);
+        if (i === -1) return false;
+        list.splice(i, 1);
+        try { localStorage.setItem(this.KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
+        this._meta(m => { delete m[id]; });
+        return true;
+    },
+    meta(id) {
+        try { return JSON.parse(localStorage.getItem(this.META_KEY))[id] || null; } catch (e) { return null; }
+    },
+    _meta(fn) {
+        let m = {};
+        try { m = JSON.parse(localStorage.getItem(this.META_KEY)) || {}; } catch (e) { /* ignore */ }
+        fn(m);
+        try { localStorage.setItem(this.META_KEY, JSON.stringify(m)); } catch (e) { /* ignore */ }
     },
     count() { return this.get().length; }
 };
@@ -436,6 +467,26 @@ function buildProductCard(product, opts) {
 
     const alertZone = pgAlertZone(p, alert);
 
+    /* movement since the product was starred — real captured/tracked prices only */
+    let wlMove = '';
+    if (opts.watch && opts.watch.base > 0 && p.price > 0) {
+        const diff = p.price - opts.watch.base;
+        const pct = diff / opts.watch.base * 100;
+        const flat = Math.abs(diff) < 1;
+        const cls = flat ? 'wl-flat' : diff < 0 ? 'wl-down' : 'wl-up';
+        const arrow = flat ? '→' : diff < 0 ? '↓' : '↑';
+        const pctTxt = flat ? 'no change'
+            : (Math.abs(pct) >= 10 ? Math.round(Math.abs(pct)) : Math.abs(pct).toFixed(1)) + '%';
+        wlMove = `
+        <div class="wl-move ${cls}" title="Price movement since you starred this product">
+            <span class="wl-since">${intel.esc(opts.watch.sinceLabel || 'Since added')}</span>
+            <s>${formatPrice(opts.watch.base)}</s>
+            <b class="wl-badge">${arrow} ${pctTxt}</b>
+            ${opts.watch.prev && opts.watch.prev !== p.price
+                ? `<em class="wl-prev" title="Last tracked price before now">prev ${formatPrice(opts.watch.prev)}</em>` : ''}
+        </div>`;
+    }
+
     const targetPop = `
         <div class="tp-pop" hidden>
             <div class="tp-row"><small>Current price</small><strong>${formatPrice(p.price)}</strong></div>
@@ -471,6 +522,7 @@ function buildProductCard(product, opts) {
                 ${drop}
             </div>
             ${alert ? `<div class="pa-zone">${alertZone}</div>` : ''}
+            ${wlMove}
             <div class="pcard-quality ${quality.cls}"><i></i>${intel.esc(quality.label)} time to buy</div>
             ${spark}
             <div class="pcard-verdict">
@@ -481,10 +533,13 @@ function buildProductCard(product, opts) {
             <div class="vd-reason">${intel.esc(vd.reason)}</div>
             <div class="pcard-actions">
                 <a class="mini-btn mb-primary" href="${detailsHref}">Details ${Layout.icons.arrowRight}</a>
-                <a class="mini-btn" href="${compareHref}" title="Compare within ${intel.esc(p.category)}">Compare</a>
                 <button type="button" class="mini-btn mb-bell pcard-bell${alert ? ' active' : ''}"
                     data-pid="${intel.esc(p.id)}" title="${alert ? 'Alert active - tap to edit' : 'Set target price'}"
                     aria-expanded="false">${Layout.icons.bell}</button>
+                ${opts.removeBtn
+                    ? `<button type="button" class="mini-btn mb-remove pcard-drop"
+                        data-drop-id="${intel.esc(p.id)}" title="Remove from watchlist">Remove</button>`
+                    : `<a class="mini-btn" href="${compareHref}" title="Compare within ${intel.esc(p.category)}">Compare</a>`}
             </div>
             ${targetPop}
         </div>
@@ -536,7 +591,8 @@ document.addEventListener('click', e => {
     if (!btn) return;
     e.preventDefault();
     const id = btn.dataset.watchId;
-    const added = PGWatch.toggle(id);
+    const prod = window.__PGCARDS__ && window.__PGCARDS__[id];
+    const added = PGWatch.toggle(id, prod && prod.price > 0 ? prod.price : undefined);
     btn.classList.toggle('on', added);
     btn.setAttribute('aria-pressed', added);
 });
