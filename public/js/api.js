@@ -353,6 +353,32 @@ const PGWatch = {
 };
 
 
+/* ---------- device-local price alerts (additive layer over server targets) ---------- */
+
+const PGAlerts = {
+    KEY: 'pg_alerts',
+    all() {
+        try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; } catch (e) { return {}; }
+    },
+    get(id) {
+        const a = this.all()[id];
+        return a && Number(a.target) > 0 ? a : null;
+    },
+    has(id) { return !!this.get(id); },
+    set(id, target) {
+        const all = this.all();
+        all[id] = { target: Math.round(Number(target)), createdAt: new Date().toISOString() };
+        try { localStorage.setItem(this.KEY, JSON.stringify(all)); } catch (e) { /* ignore */ }
+        return all[id];
+    },
+    remove(id) {
+        const all = this.all();
+        delete all[id];
+        try { localStorage.setItem(this.KEY, JSON.stringify(all)); } catch (e) { /* ignore */ }
+    }
+};
+
+
 /* ---------- premium product card builder ---------- */
 
 /*
@@ -374,6 +400,12 @@ function buildProductCard(product, opts) {
     const detailsHref = 'product-details.html?id=' + encodeURIComponent(p.id);
     const compareHref = 'products.html?cat=' + encodeURIComponent(p.category) + '&preselect=' + encodeURIComponent(p.id);
     const watched = typeof PGWatch !== 'undefined' && PGWatch.has(p.id);
+    const alert = typeof PGAlerts !== 'undefined' ? PGAlerts.get(p.id) : null;
+    (window.__PGCARDS__ = window.__PGCARDS__ || {})[p.id] = p;
+
+    /* target editor state: prefer local alert, fall back to tracker's built-in target */
+    const effTarget = alert ? alert.target : (p.target && p.target > 0 ? p.target : '');
+    const suggest = p.price ? Math.round(p.price * 0.9 / 100) * 100 : '';
 
     const select = opts.selectable ? `
         <label class="pcard-select" title="Select to compare">
@@ -402,6 +434,23 @@ function buildProductCard(product, opts) {
     const spark = opts.history ? `<div class="pcard-spark">${intel.sparkline(opts.history.points)}
         <span class="spark-note">${intel.esc(String(opts.history.range).toUpperCase())} trend</span></div>` : '';
 
+    const alertZone = pgAlertZone(p, alert);
+
+    const targetPop = `
+        <div class="tp-pop" hidden>
+            <div class="tp-row"><small>Current price</small><strong>${formatPrice(p.price)}</strong></div>
+            <label class="tp-label">Your target price</label>
+            <div class="tp-input"><span>₹</span>
+                <input type="number" min="1" step="1" inputmode="numeric" class="tp-field"
+                    value="${effTarget || ''}" placeholder="${suggest ? String(suggest) : 'Enter amount'}">
+            </div>
+            <p class="tp-savings">${alert ? pgSavingsText(p, alert.target) : ''}</p>
+            <div class="tp-actions">
+                <button type="button" class="mini-btn mb-primary tp-save">Set alert</button>
+                <button type="button" class="mini-btn tp-del${alert ? '' : ' hidden'}">Remove</button>
+            </div>
+        </div>`;
+
     return `
     <article class="pcard${opts.compact ? ' compact' : ''}" data-pid="${intel.esc(p.id)}">
         ${select}
@@ -421,6 +470,7 @@ function buildProductCard(product, opts) {
                 ${mrp}
                 ${drop}
             </div>
+            ${alert ? `<div class="pa-zone">${alertZone}</div>` : ''}
             <div class="pcard-quality ${quality.cls}"><i></i>${intel.esc(quality.label)} time to buy</div>
             ${spark}
             <div class="pcard-verdict">
@@ -432,10 +482,52 @@ function buildProductCard(product, opts) {
             <div class="pcard-actions">
                 <a class="mini-btn mb-primary" href="${detailsHref}">Details ${Layout.icons.arrowRight}</a>
                 <a class="mini-btn" href="${compareHref}" title="Compare within ${intel.esc(p.category)}">Compare</a>
-                <a class="mini-btn mb-bell" href="${detailsHref}" title="Track price & set target">${Layout.icons.bell}</a>
+                <button type="button" class="mini-btn mb-bell pcard-bell${alert ? ' active' : ''}"
+                    data-pid="${intel.esc(p.id)}" title="${alert ? 'Alert active - tap to edit' : 'Set target price'}"
+                    aria-expanded="false">${Layout.icons.bell}</button>
             </div>
+            ${targetPop}
         </div>
     </article>`;
+}
+
+/* progress from MRP down to the user's target, using real prices only */
+function pgAlertZone(p, alert) {
+    if (!alert) return '';
+    const price = p.price || 0;
+    let pct = 0, cap = 'Waiting for price data';
+
+    if (price > 0 && price <= alert.target) {
+        pct = 100; cap = 'Target reached';
+    } else if (price > 0) {
+        const gap = price - alert.target;
+        const base = p.originalPrice && p.originalPrice > price ? p.originalPrice : 0;
+        pct = base > alert.target
+            ? Math.round((base - price) / (base - alert.target) * 100)
+            : Math.round(Math.max(0, 100 - gap / price * 100 * 4));
+        pct = Math.max(4, Math.min(99, pct));
+        cap = formatPrice(gap) + ' more to drop';
+    }
+
+    const bellIcon = typeof Layout !== 'undefined' && Layout.icons && Layout.icons.bell
+        ? Layout.icons.bell
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+
+    return `
+    <span class="pa-chip">${bellIcon}<b>Alert active</b></span>
+    <div class="pa-track">
+        <div class="pa-bar"><i class="${pct === 100 ? 'hit' : ''}" style="width:${pct}%"></i></div>
+        <div class="pa-cap"><span>Target ${formatPrice(alert.target)}</span><b class="${pct === 100 ? 'hit' : ''}">${cap}</b></div>
+    </div>`;
+}
+
+/* "You'd save X vs current" preview used in the target editor */
+function pgSavingsText(p, target) {
+    if (!p.price || !target || target <= 0) return '';
+    if (target >= p.price) return 'Target is at or above the current price';
+    const save = p.price - target;
+    const pct = Math.round(save / p.price * 100);
+    return `You'd pay ${formatPrice(save)} less (${pct}% below current)`;
 }
 
 /* watch-star clicks work on every page via delegation */
@@ -447,4 +539,120 @@ document.addEventListener('click', e => {
     const added = PGWatch.toggle(id);
     btn.classList.toggle('on', added);
     btn.setAttribute('aria-pressed', added);
+});
+
+/* ---------- target-price editor: open / preview / save / remove ---------- */
+
+function pgToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'pg-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 350);
+    }, 2200);
+}
+
+function pgClosePops(except) {
+    document.querySelectorAll('.tp-pop').forEach(pop => {
+        if (pop !== except) {
+            pop.hidden = true;
+            const bell = pop.closest('.pcard') && pop.closest('.pcard').querySelector('.pcard-bell');
+            if (bell) bell.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
+
+document.addEventListener('click', e => {
+    /* open/close the editor */
+    const bell = e.target.closest('.pcard-bell');
+    if (bell) {
+        e.preventDefault();
+        const card = bell.closest('.pcard');
+        const pop = card && card.querySelector('.tp-pop');
+        if (!pop) return;
+        const willOpen = pop.hidden;
+        pgClosePops(willOpen ? pop : null);
+        pop.hidden = !willOpen;
+        bell.setAttribute('aria-expanded', String(willOpen));
+        if (willOpen) {
+            const field = pop.querySelector('.tp-field');
+            if (field) { field.focus(); field.select(); }
+        }
+        return;
+    }
+
+    if (!e.target.closest('.tp-pop')) pgClosePops(null);
+});
+
+document.addEventListener('input', e => {
+    const field = e.target.closest('.tp-field');
+    if (!field) return;
+    const card = field.closest('.pcard');
+    const product = window.__PGCARDS__ && window.__PGCARDS__[card.dataset.pid];
+    if (!product) return;
+    const v = Number(field.value);
+    field.closest('.tp-pop').querySelector('.tp-savings').textContent =
+        field.value === '' ? '' : pgSavingsText(product, v);
+});
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') pgClosePops(null);
+});
+
+function pgZoneEl(card) {
+    let zone = card.querySelector('.pa-zone');
+    if (!zone) {
+        zone = document.createElement('div');
+        zone.className = 'pa-zone';
+        card.querySelector('.pcard-priceline').after(zone);
+    }
+    return zone;
+}
+
+/* save + remove via delegation so every page behaves identically */
+document.addEventListener('click', e => {
+    const saveBtn = e.target.closest('.tp-save');
+    const delBtn = e.target.closest('.tp-del');
+
+    if (!saveBtn && !delBtn) return;
+    e.preventDefault();
+
+    const pop = saveBtn ? saveBtn.closest('.tp-pop') : delBtn.closest('.tp-pop');
+    const card = pop.closest('.pcard');
+    const pid = card.dataset.pid;
+    const product = window.__PGCARDS__ && window.__PGCARDS__[pid];
+    const bell = card.querySelector('.pcard-bell');
+
+    if (saveBtn) {
+        const field = pop.querySelector('.tp-field');
+        const target = Math.round(Number(field.value));
+        if (!target || target <= 0) {
+            pgToast('Enter a valid target price');
+            field.focus();
+            return;
+        }
+        PGAlerts.set(pid, target);
+        const entry = PGAlerts.get(pid);
+        pgZoneEl(card).innerHTML = pgAlertZone(product || { price: 0 }, entry);
+        bell.classList.add('active');
+        bell.title = 'Alert active - tap to edit';
+        pop.querySelector('.tp-del').classList.remove('hidden');
+        pop.hidden = true;
+        bell.setAttribute('aria-expanded', 'false');
+        pgToast('Alert active at ' + formatPrice(target));
+    } else {
+        PGAlerts.remove(pid);
+        const zone = card.querySelector('.pa-zone');
+        if (zone) zone.remove();
+        bell.classList.remove('active');
+        bell.title = 'Set target price';
+        pop.querySelector('.tp-del').classList.add('hidden');
+        pop.querySelector('.tp-savings').textContent = '';
+        pop.hidden = true;
+        bell.setAttribute('aria-expanded', 'false');
+        pgToast('Alert removed');
+    }
 });

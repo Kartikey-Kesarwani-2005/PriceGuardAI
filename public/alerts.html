@@ -17,6 +17,14 @@
     <script src="js/components/layout.js"></script>
     <script>
         document.getElementById('app').innerHTML = Layout.renderPage('alerts', 'Alerts', 'Price, inventory and monitoring notifications.', `
+            <div class="section-head">
+                <div><span class="eyebrow">Your targets</span><h3>Your price alerts</h3></div>
+            </div>
+            <div class="cards-grid" id="myAlerts"></div>
+
+            <div class="section-head feed-head">
+                <div><span class="eyebrow">Live feed</span><h3>Monitoring notifications</h3></div>
+            </div>
             <div class="alerts-card" id="alertsList"></div>
             <div class="caught-up">
                 <div class="success-big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>

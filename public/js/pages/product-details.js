@@ -67,6 +67,7 @@ async function loadHistory(range) {
     renderStats(historyData);
     renderFacts(historyData);
     renderIntel(historyData);
+    renderAlertCard();
     drawChart();
 
     if (sub) {
@@ -217,6 +218,84 @@ function renderIntel(d) {
             <div class="chip-row mini">${chips}</div>
             ${meter}
         </div>`;
+}
+
+/* ---------- price alert panel ---------- */
+
+function renderAlertCard() {
+    const host = document.getElementById('alertCard');
+    if (!host || !productRecord) return;
+
+    const d = historyData;
+    const price = d && d.summary ? d.summary.current : (productRecord.price || 0);
+    const local = PGAlerts.get(productId);
+    const target = local ? local.target : 0;
+
+    const reached = target > 0 && price > 0 && price <= target;
+    const savings = target > 0 && price > target ? price - target : 0;
+
+    let pct = 0, cap = 'Set a target to start tracking';
+    if (target > 0 && price > 0) {
+        if (reached) { pct = 100; cap = 'Target reached'; }
+        else {
+            const gap = price - target;
+            const base = productRecord.originalPrice && productRecord.originalPrice > price ? productRecord.originalPrice : 0;
+            pct = base > target
+                ? Math.round((base - price) / (base - target) * 100)
+                : Math.round(Math.max(0, 100 - gap / price * 100 * 4));
+            pct = Math.max(4, Math.min(99, pct));
+            cap = formatINR(gap) + ' more to drop';
+        }
+    }
+
+    const effValue = local ? target : (productRecord.target && productRecord.target > 0 ? productRecord.target : '');
+    const suggest = price ? Math.round(price * 0.9 / 100) * 100 : '';
+
+    host.innerHTML = `
+        <div class="ac-head">
+            <div class="ac-status">
+                <span class="verdict-pill lg ${target ? 'v-buy' : 'v-wait'}">
+                    ${target ? Layout.icons.bell + ' Alert active' : 'No alert set'}
+                </span>
+                <p>${target
+                    ? (reached
+                        ? 'Current price is at or below your ' + fmtINR(target) + ' target.'
+                        : "We're watching this space - you'll see it hit when the tracked price drops to " + fmtINR(target) + '.')
+                    : 'Get a clear signal the moment the price works for you.'}</p>
+            </div>
+            <div class="ac-grid">
+                <div><small>Current price</small><strong>${fmtINR(price)}</strong></div>
+                <div><small>Your target</small><strong>${target ? fmtINR(target) : '—'}</strong></div>
+                <div><small>Potential savings</small><strong class="${savings ? 'ac-save' : ''}">${savings ? fmtINR(savings) : '—'}</strong></div>
+            </div>
+        </div>
+        <div class="pa-track ac-track">
+            <div class="pa-bar"><i class="${pct === 100 ? 'hit' : ''}" style="width:${pct}%"></i></div>
+            <div class="pa-cap"><span>Progress to target</span><b class="${pct === 100 ? 'hit' : ''}">${esc(cap)}</b></div>
+        </div>
+        <div class="ac-actions">
+            <div class="tp-input"><span>₹</span>
+                <input type="number" min="1" step="1" inputmode="numeric" id="pdTargetInput"
+                    value="${effValue || ''}" placeholder="${suggest ? String(suggest) : 'Enter amount'}" aria-label="Target price">
+            </div>
+            <button type="button" class="mini-btn mb-primary" id="pdSaveTarget">${target ? 'Update alert' : 'Set alert'}</button>
+            ${target ? '<button type="button" class="mini-btn" id="pdRemoveTarget">Remove</button>' : ''}
+        </div>`;
+
+    const input = document.getElementById('pdTargetInput');
+    document.getElementById('pdSaveTarget').addEventListener('click', () => {
+        const t = Math.round(Number(input.value));
+        if (!t || t <= 0) { pgToast('Enter a valid target price'); input.focus(); return; }
+        PGAlerts.set(productId, t);
+        renderAlertCard();
+        pgToast('Alert active at ' + fmtINR(t));
+    });
+    const removeBtn = document.getElementById('pdRemoveTarget');
+    if (removeBtn) removeBtn.addEventListener('click', () => {
+        PGAlerts.remove(productId);
+        renderAlertCard();
+        pgToast('Alert removed');
+    });
 }
 
 /* ---------- chart engine ---------- */
