@@ -1,26 +1,36 @@
-const table = document.getElementById('productsTable');
+const grid = document.getElementById('productsGrid');
 const categoryTabs = document.getElementById('categoryTabs');
 let allProducts = [];
 let activeCategory = null;
 let categories = {};
 
 async function renderProducts(productList) {
-    if (!table) return;
-    table.innerHTML = '';
+    if (!grid) return;
 
     if (productList.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="7" class="empty-cell">No products match your filters. Try a different search or category.</td>';
-        table.appendChild(row);
+        grid.innerHTML = `
+            <div class="state-card wide">
+                <h4>No products match your filters</h4>
+                <p>Try a different search or pick another category above.</p>
+            </div>`;
         return;
     }
 
-    productList.forEach(product => {
-        const row = document.createElement('tr');
-        row.innerHTML = renderProductRow(product, true);
-        table.appendChild(row);
-    });
+    grid.innerHTML = productList.map(p => buildProductCard(p, { selectable: true })).join('');
     bindCheckboxes();
+
+    /* preselect from home cards (?preselect=<id>) */
+    const params = new URLSearchParams(window.location.search);
+    const pre = params.get('preselect');
+    if (pre) {
+        const box = grid.querySelector('.compare-check[data-id="' + CSS.escape(pre) + '"]');
+        if (box && !box.checked) {
+            box.checked = true;
+            box.dispatchEvent(new Event('change'));
+            const card = box.closest('.pcard');
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
 }
 
 function bindCheckboxes() {
@@ -55,6 +65,12 @@ async function loadProducts(category) {
         renderProducts(allProducts);
     } catch (err) {
         console.error('Error loading products:', err);
+        if (grid) grid.innerHTML = `
+            <div class="state-card error-state">
+                <h4>Couldn't load products</h4>
+                <p>The tracking engine may be offline. Check your connection and retry.</p>
+                <button class="mini-btn mb-primary" onclick="location.reload()">Try again</button>
+            </div>`;
     }
 }
 
@@ -63,8 +79,11 @@ async function loadCategories() {
     if (!categoryTabs) return;
 
     categoryTabs.innerHTML = '';
+    const urlCat = new URLSearchParams(window.location.search).get('cat');
+    const initial = urlCat && categories[urlCat] ? urlCat : null;
+
     const allTab = document.createElement('button');
-    allTab.className = 'cat-tab active';
+    allTab.className = 'cat-tab' + (initial ? '' : ' active');
     allTab.textContent = 'All';
     allTab.addEventListener('click', () => {
         activeCategory = null;
@@ -76,7 +95,7 @@ async function loadCategories() {
 
     Object.keys(categories).forEach(cat => {
         const tab = document.createElement('button');
-        tab.className = 'cat-tab';
+        tab.className = 'cat-tab' + (cat === initial ? ' active' : '');
         tab.textContent = `${cat} (${categories[cat].length})`;
         tab.addEventListener('click', () => {
             activeCategory = cat;
@@ -86,10 +105,17 @@ async function loadCategories() {
         });
         categoryTabs.appendChild(tab);
     });
+
+    if (initial) {
+        activeCategory = initial;
+        loadProducts(initial);
+    }
 }
 
 loadCategories();
-loadProducts();
+if (!new URLSearchParams(window.location.search).get('cat')) {
+    loadProducts();
+}
 
 const search = document.getElementById('productSearch');
 function filterProducts() {

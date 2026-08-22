@@ -16,7 +16,7 @@
 
     <script src="js/components/layout.js"></script>
     <script>
-        document.getElementById('app').innerHTML = Layout.renderPage('products', 'Products', 'Browse and compare products across categories.', `
+        document.getElementById('app').innerHTML = Layout.renderPage('compare', 'Compare', 'Pick any two products from a category — PriceGuard scores the rest.', `
             <div class="page-top">
                 <button class="primary-button" id="showProductForm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add product</button>
                 <button class="primary-button" id="compareBtn" disabled>Compare Selected</button>
@@ -36,11 +36,8 @@
             </div>
             <div class="category-tabs" id="categoryTabs"></div>
             <div class="search-card"><input type="text" id="productSearch" placeholder="Search products..." autocomplete="off"></div>
-            <div class="table-card">
-                <table class="data-table">
-                    <thead><tr><th></th><th>Product</th><th>Store</th><th>Price</th><th>Target</th><th>Stock</th><th>Status</th></tr></thead>
-                    <tbody id="productsTable"></tbody>
-                </table>
+            <div class="cards-grid selectable" id="productsGrid">
+                <div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div>
             </div>
             <div class="compare-modal hidden" id="compareModal">
                 <div class="compare-overlay" id="compareOverlay"></div>

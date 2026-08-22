@@ -3,6 +3,79 @@ const scraperCategoryTabs = document.getElementById('scraperCategoryTabs');
 let allScraperProducts = [];
 let activeScraperCategory = null;
 
+/* ---------- store reliability (from /api/health) ---------- */
+
+async function loadStoreHealth() {
+    const box = document.getElementById('storeHealth');
+    if (!box) return;
+    try {
+        const res = await fetch('/api/health');
+        if (!res.ok) throw new Error('unavailable');
+        const data = await res.json();
+
+        const rows = Object.keys(data.stores || {}).map(name => ({
+            name,
+            ...data.stores[name]
+        })).sort((a, b) => (b.successRate || 0) - (a.successRate || 0));
+
+        if (!rows.length) {
+            box.innerHTML = '<div class="state-card slim"><p>No store activity recorded yet.</p></div>';
+            return;
+        }
+
+        box.innerHTML = rows.map(s => {
+            const rate = typeof s.successRate === 'number' ? s.successRate : null;
+            return `
+            <div class="store-tile">
+                <div class="st-top"><strong>${Intel.esc(s.name)}</strong><span class="st-count">${rate === null ? '—' : rate + '%'} success</span></div>
+                <div class="st-bar"><i style="width:${rate === null ? 4 : Math.max(4, rate)}%" class="${rate !== null && rate < 60 ? 'low' : ''}"></i></div>
+                <div class="st-meta">
+                    <span>Checks <b>${s.attempts}</b></span>
+                    <span>Self-heals <b>${s.heals}</b></span>
+                    ${data.mode === 'demo' ? '<span class="muted-note">demo feed</span>' : ''}
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        box.innerHTML = `
+            <div class="state-card error-state">
+                <p>Store health is unavailable right now.</p>
+                <button class="mini-btn mb-primary" onclick="loadStoreHealth()">Try again</button>
+            </div>`;
+    }
+}
+
+/* ---------- simple freshness summary ---------- */
+
+function renderFreshnessSummary() {
+    const box = document.getElementById('dhSummary');
+    if (!box) return;
+
+    let live = 0, recent = 0, stale = 0, demo = 0;
+    allScraperProducts.forEach(p => {
+        const f = Intel.freshness(p);
+        if (f.cls === 'live') live++;
+        else if (f.cls === 'demo') demo++;
+        else if (f.cls === 'recent') recent++;
+        else stale++;
+    });
+    recent += demo;
+
+    const tile = (tone, num, label, desc) => `
+        <div class="dh-tile ${tone}">
+            <i class="dh-dot"></i>
+            <div><strong>${num} ${label}</strong><small>${desc}</small></div>
+        </div>`;
+
+    box.innerHTML = `
+        <div class="dh-grid">
+            ${tile('t-live', live, 'live', 'Synced within the last few minutes')}
+            ${tile('t-recent', recent, 'recently updated', 'Fresh within the last day' + (demo ? ' (includes demo feed)' : ''))}
+            ${tile('t-stale', stale, 'stale', 'Older data - treat prices with care')}
+        </div>
+        <p class="dh-note">PriceGuard marks every price with a freshness chip so you always know how much to trust it.</p>`;
+}
+
 function renderScraperRow(product) {
     const row = document.createElement('div');
     row.className = 'scraper-row';
@@ -69,6 +142,8 @@ function renderScraperList(products) {
     document.getElementById('healthyCount').textContent = healthy;
     document.getElementById('attentionCount').textContent = attention;
     document.getElementById('totalCount').textContent = products.length;
+
+    renderFreshnessSummary();
 }
 
 async function loadScraperCategories() {
@@ -110,5 +185,6 @@ async function renderScrapers() {
     }
 }
 
+loadStoreHealth();
 loadScraperCategories();
 renderScrapers();

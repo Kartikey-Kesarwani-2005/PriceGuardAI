@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="PriceGuard AI - Price and inventory intelligence">
+    <meta name="description" content="PriceGuard AI - Know the price. Know the moment.">
     <meta name="theme-color" content="#04060c">
-    <title>PriceGuard AI</title>
+    <title>PriceGuard AI - Price Intelligence</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='.55' stop-color='%238b5cf6'/%3E%3Cstop offset='1' stop-color='%23d946ef'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='24' height='24' rx='6' fill='%23070b14'/%3E%3Cpath d='M18.5 8.6c0 4.6-3.1 6.9-6 8.2a.9.9 0 0 1-.7 0c-2.9-1.3-6-3.6-6-8.2V4.9c0-.4.4-.8.8-.8 1.7 0 3.7-1 5-2.2a.9.9 0 0 1 1.2 0c1.4 1.2 3.3 2.2 5 2.2.4 0 .7.4.7.8z' fill='url(%23g)'/%3E%3Cpath d='m9.2 11.6 2 2 3.6-3.6' stroke='%23fff' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,36 +17,93 @@
 
     <script src="js/components/layout.js"></script>
     <script>
-        const app = document.getElementById('app');
-        app.innerHTML = Layout.renderPage('dashboard', 'Command Center', "Here's what's happening with your monitored products.", `
-            <div class="page-top">
-                <button class="primary-button" id="refreshBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Refresh Data</button>
-                <span class="muted" id="lastRefresh" style="font-size:12px;margin-left:10px;"></span>
-            </div>
-            <div class="stats-grid">
-                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Products Monitored</p><h2 class="stat-value" id="productsMonitored">0</h2></div><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div></div><div class="stat-bottom"><span class="stat-trend">Active</span><span class="stat-description">Across all stores</span></div></div>
-                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Healthy Scrapers</p><h2 class="stat-value" id="healthyScrapers">0</h2></div><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div></div><div class="stat-bottom"><span class="stat-trend">Operational</span><span class="stat-description">All monitors active</span></div></div>
-                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Target price hits</p><h2 class="stat-value" id="priceDrops">0</h2></div><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></svg></div></div><div class="stat-bottom"><span class="stat-trend">Detected</span><span class="stat-description">Below target price</span></div></div>
-                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Categories</p><h2 class="stat-value" id="storesTracked">0</h2></div><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div></div><div class="stat-bottom"><span class="stat-trend">Smartphones, Laptops...</span><span class="stat-description">Product categories</span></div></div>
-            </div>
-            <div class="dashboard-grid">
-                <div class="table-card">
-                    <div class="table-header"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Monitored products</h3></div>
-                    <table class="data-table">
-                        <thead><tr><th>Product</th><th>Store</th><th>Price</th><th>Target</th><th>Stock</th><th>Status</th></tr></thead>
-                        <tbody id="productTable"></tbody>
-                    </table>
-                </div>
-                <div class="table-card">
-                    <div class="table-header"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>AI healing activity</h3></div>
-                    <div class="activity-feed">
-                        <div class="activity-item"><div class="activity-dot"></div><div><strong>Selector updated</strong><span>Smartphones on Amazon · 12 min ago</span></div></div>
-                        <div class="activity-item"><div class="activity-dot"></div><div><strong>Selector updated</strong><span>Laptops on Flipkart · 48 min ago</span></div></div>
-                        <div class="activity-item"><div class="activity-dot"></div><div><strong>Selector updated</strong><span>Smartwatches on Croma · 2 hrs ago</span></div></div>
-                        <div class="activity-item"><div class="activity-dot"></div><div><strong>Selector updated</strong><span>Televisions on Amazon · 3 hrs ago</span></div></div>
+        document.getElementById('app').innerHTML = Layout.renderPage('home', '', '', `
+
+            <!-- 1 · SMART SEARCH HERO -->
+            <div class="hero">
+                <div class="hero-inner">
+                    <span class="hero-eyebrow">${Layout.icons.spark}AI Price Intelligence</span>
+                    <h2 class="hero-title">Know the Price.<br><span class="grad-text">Know the Moment.</span></h2>
+                    <p class="hero-sub">PriceGuard watches prices across your stores, learns their rhythm and tells you the exact moment buying stops being a gamble.</p>
+
+                    <div class="hero-search" id="heroSearchBox">
+                        ${Layout.icons.search}
+                        <input type="text" id="heroSearch" placeholder="Search any product — iPhone 15, PS5, air conditioner…" autocomplete="off" aria-label="Search products">
+                        <button class="hero-go" id="heroGo">${Layout.icons.arrowRight}Analyse</button>
                     </div>
+
+                    <div class="ai-status" id="aiStatus"><i class="pulse-dot"></i>Waking up the engine…</div>
+                    <div class="chip-row" id="popularChips"></div>
                 </div>
+                <div class="hero-glow" aria-hidden="true"></div>
             </div>
+
+            <!-- key numbers -->
+            <div class="stats-grid home-stats">
+                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Products tracked</p><h2 class="stat-value" id="stProducts">—</h2></div><div class="stat-icon">${Layout.icons.box}</div></div><div class="stat-bottom"><span class="stat-trend">Across all categories</span><span class="stat-description">Live monitoring</span></div></div>
+                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Top deal score</p><h2 class="stat-value" id="stScore">—</h2></div><div class="stat-icon">${Layout.icons.insights}</div></div><div class="stat-bottom"><span class="stat-trend">Computed just now</span><span class="stat-description">From live signals</span></div></div>
+                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Target hits</p><h2 class="stat-value" id="stHits">—</h2></div><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></svg></div></div><div class="stat-bottom"><span class="stat-trend">Ready to buy</span><span class="stat-description">At or below target</span></div></div>
+                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Active alerts</p><h2 class="stat-value" id="stAlerts">—</h2></div><div class="stat-icon">${Layout.icons.bell}</div></div><div class="stat-bottom"><span class="stat-trend">Needs attention</span><span class="stat-description">Prices &amp; stock moves</span></div></div>
+            </div>
+
+            <!-- 2 · TODAY'S BEST DEALS -->
+            <section class="dash-section">
+                <div class="section-head">
+                    <div><span class="eyebrow">Today's best</span><h3>Deals worth your attention</h3></div>
+                    <a class="see-all" href="products.html">Browse all ${Layout.icons.arrowRight}</a>
+                </div>
+                <div class="cards-grid" id="dealsGrid">
+                    <div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div>
+                </div>
+            </section>
+
+            <!-- 3 + 4 · PRICE INTELLIGENCE SPOTLIGHT & HISTORY -->
+            <section class="dash-section">
+                <div class="section-head">
+                    <div><span class="eyebrow">Price intelligence</span><h3>The moment, decoded</h3></div>
+                </div>
+                <div class="spotlight" id="spotlight">
+                    <div class="spot-left" id="spotLeft"><div class="skel block-skel tall"></div></div>
+                    <div class="spot-right" id="spotRight"><div class="chart-panel inner"><div class="skel block-skel tall"></div></div></div>
+                </div>
+            </section>
+
+            <!-- 5 · BUY / WAIT AI -->
+            <section class="dash-section">
+                <div class="section-head">
+                    <div><span class="eyebrow">Buy / Wait AI</span><h3>Should you buy it today?</h3></div>
+                </div>
+                <div class="rail" id="buywaitRail"><div class="skel block-skel"></div><div class="skel block-skel"></div><div class="skel block-skel"></div><div class="skel block-skel"></div></div>
+            </section>
+
+            <!-- 6 · PRICE ALERTS PREVIEW -->
+            <section class="dash-section">
+                <div class="section-head">
+                    <div><span class="eyebrow">Price alerts</span><h3>What changed today</h3></div>
+                    <a class="see-all" href="alerts.html">All alerts ${Layout.icons.arrowRight}</a>
+                </div>
+                <div class="alerts-preview" id="alertsPreview"><div class="skel row-skel"></div><div class="skel row-skel"></div><div class="skel row-skel"></div></div>
+            </section>
+
+            <!-- 7 · STORE COMPARISON -->
+            <section class="dash-section">
+                <div class="section-head">
+                    <div><span class="eyebrow">Store comparison</span><h3>Where the deals live</h3></div>
+                    <a class="see-all" href="scrapers.html">Deep dive ${Layout.icons.arrowRight}</a>
+                </div>
+                <div class="store-grid" id="storeCompare"><div class="skel block-skel"></div><div class="skel block-skel"></div><div class="skel block-skel"></div></div>
+            </section>
+
+            <!-- 8 · ADVANCED · DATA HEALTH -->
+            <details class="adv-wrap" id="dataHealth">
+                <summary>
+                    <span class="eyebrow adv-eyebrow">Advanced</span>
+                    <span class="adv-title">Data health</span>
+                    <span class="adv-hint">How fresh is the data behind every number?</span>
+                    <svg class="adv-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+                <div class="dh-body" id="dhBody"><div class="skel row-skel"></div></div>
+            </details>
         `);
     </script>
     <script src="js/app.js"></script>
