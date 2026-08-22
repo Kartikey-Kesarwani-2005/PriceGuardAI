@@ -40,6 +40,20 @@ function setCurrentUser(name) {
     try { localStorage.setItem('pg_currentUser', name); } catch (e) { /* ignore */ }
 }
 
+function ensureAdminUser() {
+    const users = Layout.getUsers();
+    if (users.some(u => u.role === 'Admin')) return;
+    users[0] = { ...users[0], role: 'Admin' };
+    saveUsers(users);
+}
+
+ensureAdminUser();
+
+function isAdminUser() {
+    const user = Layout.getCurrentUser();
+    return !!user && user.role === 'Admin';
+}
+
 function hashPin(pin) {
     let h = 5381;
     const salted = 'pguard::' + pin;
@@ -58,17 +72,18 @@ function savePins(pins) {
 let authMode = null;
 let authUser = '';
 
-function openAuth(name, mode) {
+function openAuth(name, mode, notice) {
     if (!pmAuth) return;
     authMode = mode;
     authUser = name;
 
     pmAuth.innerHTML = `
-        <div class="pm-auth-title">${mode === 'login' ? `Login as <strong>${name}</strong>` : `Create account <strong>${name}</strong>`}</div>
+        ${notice ? `<div class="pm-auth-notice">${notice}</div>` : ''}
+        <div class="pm-auth-title">${mode === 'login' ? `Sign in as <strong>${name}</strong>` : `Create account <strong>${name}</strong>`}</div>
         <div class="pm-auth-row">
             <input type="password" id="pmPinInput" maxlength="16" autocomplete="off"
                 placeholder="${mode === 'login' ? 'Enter PIN' : 'Create PIN (min 4 characters)'}">
-            <button id="pmPinSubmit">${mode === 'login' ? 'Login' : 'Create'}</button>
+            <button id="pmPinSubmit">${mode === 'login' ? 'Sign in' : 'Sign up'}</button>
         </div>
         <div class="pm-auth-error hidden" id="pmAuthError"></div>
         <button class="pm-auth-cancel" id="pmAuthCancel">Cancel</button>
@@ -118,12 +133,16 @@ function submitAuth() {
     }
 
     const users = Layout.getUsers();
-    users.push({ name: authUser, role: 'Standard Account' });
-    saveUsers(users);
+    if (!users.some(u => u.name.toLowerCase() === authUser.toLowerCase())) {
+        users.push({ name: authUser, role: 'Standard Account' });
+        saveUsers(users);
+    }
     pins[authUser] = hashPin(pin);
     savePins(pins);
-    setCurrentUser(authUser);
-    location.reload();
+
+    closeAuth();
+    renderProfileMenu();
+    openAuth(authUser, 'login', 'Account ready. Now sign in with your PIN.');
 }
 
 function renderProfileMenu() {
@@ -132,17 +151,17 @@ function renderProfileMenu() {
     const users = Layout.getUsers();
     const current = Layout.getCurrentUser();
     profileMenuList.innerHTML = users.map(u => `
-        <div class="profile-menu-item ${u.name === current.name ? 'active' : ''}" data-name="${u.name}">
+        <div class="profile-menu-item ${current && u.name === current.name ? 'active' : ''}" data-name="${u.name}">
             <span class="avatar avatar-sm">${Layout.initials(u.name)}</span>
             <span class="pm-info"><strong>${u.name}</strong><small>${u.role}</small></span>
-            ${u.name === current.name ? '<span class="pm-check">✓</span>' : ''}
+            ${current && u.name === current.name ? '<span class="pm-check">✓</span>' : ''}
         </div>
     `).join('');
 
     profileMenuList.querySelectorAll('.profile-menu-item').forEach(item => {
         item.addEventListener('click', () => {
             const name = item.dataset.name;
-            if (name === current.name) {
+            if (current && name === current.name) {
                 profileMenu.classList.add('hidden');
                 return;
             }
@@ -230,4 +249,20 @@ document.addEventListener('keydown', e => {
         const dot = notificationBtn && notificationBtn.querySelector('.notification-dot');
         if (dot && settings.notifications === false) dot.style.display = 'none';
     } catch (e) { /* ignore */ }
+})();
+
+(function promptSigninForStaleSession() {
+    let stored = null;
+    try { stored = localStorage.getItem('pg_currentUser'); } catch (e) { /* ignore */ }
+    if (stored === null) return;
+
+    const current = Layout.getCurrentUser();
+    if (current || !profileMenu) return;
+
+    setTimeout(() => {
+        renderProfileMenu();
+        profileMenu.classList.remove('hidden');
+        profileMenuList.insertAdjacentHTML('beforebegin',
+            '<div class="pm-auth-notice">Your account was removed. Please sign in to continue.</div>');
+    }, 250);
 })();

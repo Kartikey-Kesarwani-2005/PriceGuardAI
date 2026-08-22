@@ -50,14 +50,18 @@ const Layout = {
                 if (Array.isArray(users) && users.length) return users;
             }
         } catch (e) { /* ignore */ }
-        return [{ name: 'Dev X', role: 'Pro Account' }];
+        return [{ name: 'Dev X', role: 'Admin' }];
     },
 
     getCurrentUser() {
         try {
             const name = localStorage.getItem('pg_currentUser');
-            const found = this.getUsers().find(u => u.name === name);
-            if (found) return found;
+            const users = this.getUsers();
+            if (name === null) {
+                localStorage.setItem('pg_currentUser', users[0].name);
+                return users[0];
+            }
+            return users.find(u => u.name === name) || null;
         } catch (e) { /* ignore */ }
         return this.getUsers()[0];
     },
@@ -68,15 +72,18 @@ const Layout = {
 
     renderHeader() {
         const user = this.getCurrentUser();
+        const name = user ? user.name : 'Guest';
+        const role = user ? user.role : 'Not signed in';
+        const avatarText = user ? this.initials(user.name) : '?';
         return `
         <header class="header">
             <button class="mobile-menu" id="openSidebar" aria-label="Open menu">${this.icons.menu}</button>
             <div class="search-box">${this.icons.search}<input type="text" id="globalSearch" placeholder="Search products..." autocomplete="off"><span class="kbd">/</span></div>
             <div class="header-right">
                 <button class="notification-button" id="notificationBtn" title="Alerts" aria-label="Alerts">${this.icons.bell}<span class="notification-dot"></span></button>
-                <div class="profile" id="profileBtn" title="Switch user">
-                    <div class="avatar">${this.initials(user.name)}</div>
-                    <div class="profile-info"><strong>${user.name}</strong><span class="profile-role"><span class="role-dot"></span>${user.role}</span></div>
+                <div class="profile ${user ? '' : 'profile-guest'}" id="profileBtn" title="${user ? 'Switch user' : 'Sign in'}">
+                    <div class="avatar">${avatarText}</div>
+                    <div class="profile-info"><strong>${name}</strong><span class="profile-role"><span class="role-dot"></span>${role}</span></div>
                 </div>
                 <div class="profile-menu hidden" id="profileMenu">
                     <div class="profile-menu-title">Switch account</div>
