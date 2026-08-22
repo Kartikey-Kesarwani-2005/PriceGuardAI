@@ -7,3 +7,4 @@ data/collectors-k*.json
 data/bd-keys.txt
 
 .vercel
+data/*.bak

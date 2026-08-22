@@ -43,6 +43,21 @@ test('normalizeRecord parses rupee-formatted price strings', () => {
     assert.strictEqual(rec.price, 62999);
 });
 
+test('normalizeRecord collapses 1000x-inflated collector prices', () => {
+    const rec = normalizeRecord({
+        product_title: 'Apple iPhone 15 (Blue, 128 GB)',
+        current_price: { value: 57900000 },
+        original_price: { value: 59900000 }
+    });
+    assert.strictEqual(rec.price, 57900);
+    assert.strictEqual(rec.originalPrice, 59900);
+});
+
+test('normalizeRecord keeps legitimate sub-5-lakh prices untouched', () => {
+    const rec = normalizeRecord({ title: 'MacBook Air M4', current_price: { value: 114900 } });
+    assert.strictEqual(rec.price, 114900);
+});
+
 test('normalizeRecord returns null when no price exists', () => {
     assert.strictEqual(normalizeRecord({ title: 'No price item' }), null);
 });

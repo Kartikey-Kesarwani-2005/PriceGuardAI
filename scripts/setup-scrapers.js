@@ -1,6 +1,6 @@
-const { execCmd, loadCollectors, saveCollectors, collectorsFileFor, KEY_POOL, COLLECTORS_FILE } = require('../lib/scraperEngine');
+const { execCmd, loadCollectors, saveCollectors, collectorsFileFor, KEY_POOL, COLLECTORS_FILE, STORE_CONFIG } = require('../lib/scraperEngine');
 
-const DESCRIPTION = 'Extract product listings from this e-commerce search results page. IMPORTANT: do NOT follow pagination links and do NOT navigate into product detail pages - process only the first results page in a single pass to avoid rate limits. For each visible listing capture: title/name of product, current selling price in INR, original MRP or list price, availability or stock status, rating out of 5, number of reviews, and the product URL.';
+const DESCRIPTION = 'Extract product listings from this e-commerce search results page. IMPORTANT: do NOT follow pagination links and do NOT navigate into product detail pages - process only the first results page in a single pass to avoid rate limits. Treat every product card individually: the title/name must be the exact listing name shown on that card (never a category or section heading like "iPhones"), repeated for each card. For each visible listing capture: title/name of product, current selling price in INR as the exact integer displayed (e.g. 57900 for Rs.57,900 - never scaled up), original MRP or list price, availability or stock status, rating out of 5, number of reviews, and the product URL.';
 
 async function createStoreCollector(storeKey, label) {
     const cfg = STORE_CONFIG[label];
@@ -24,8 +24,8 @@ async function main() {
     const sel = (process.argv[2] || '').toLowerCase();
     const m = /^k(\d+)$/.exec(sel);
     const keyIdx = m ? parseInt(m[1], 10) - 1 : 0;
-    if (m) {
-        if (!KEY_POOL[keyIdx]) {
+    if (KEY_POOL.length) {
+        if (keyIdx >= KEY_POOL.length || keyIdx < 0) {
             throw new Error(`Key #${keyIdx + 1} not found. BRIGHTDATA_API_KEYS has ${KEY_POOL.length} key(s) in .env`);
         }
         process.env.BRIGHTDATA_API_KEY = KEY_POOL[keyIdx];
@@ -57,7 +57,7 @@ async function main() {
     }
 
     console.log(`\n[setup] Done. ${created} collector(s) created.`);
-    console.log('[setup] Collectors file:', m ? collectorsFile : COLLECTORS_FILE);
+    console.log('[setup] Collectors file:', KEY_POOL.length ? collectorsFile : COLLECTORS_FILE);
 }
 
 main();
