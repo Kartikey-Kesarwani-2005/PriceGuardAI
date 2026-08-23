@@ -432,7 +432,7 @@ function pendingRecord(product) {
     };
 }
 
-const MAX_CONCURRENT_SCRAPES = 3;
+const MAX_CONCURRENT_SCRAPES = 6;
 let activeScrapes = 0;
 const scrapeQueue = [];
 
