@@ -35,14 +35,16 @@ PriceGuard answers three questions for any product:
 - **Best Opportunity card** — the single strongest deal of the day, dominant on the dashboard, with drop-vs-average and a direct buy link
 - **Buy at store CTAs** — live-tracked products deep-link to the verified listing; others open a store search for the exact model
 
-### Experience layer — "The Ledger" design system
+### Experience layer — the "SIGNAL DESK" design system
 
-- Editorial serif hero (Fraunces) with tabular-numeral pricing (IBM Plex Mono) on warm paper tones with deep-pine accents
+- Light precision-instrument aesthetic on warm paper tones with a deep-pine rail and a single signal-green accent; Fraunces display type over IBM Plex Mono tabular numerals
+- **Live radar hero** — rotating sweep with pinging store blips, mono scope-readout wired to real counts, and a ticker tape of today's tracked prices
 - **Trust labels everywhere** — "Verified 42 sec ago", "Last verified 2h ago", "Recovered automatically"
 - **Meaningful loading states** — rotating human phrases ("Comparing stores…", "Verifying price data…") instead of skeletons
-- **Store ledger** — typographic store comparison ranked by average discount
-- **PRICE MONITOR strip** — live per-store health: Healthy / Recovered automatically / Attention
-- **Clickable stat cards**, keyboard-accessible, each jumping to the page behind its number
+- **Store ledger** — typographic, dot-leader store comparison ranked by average discount
+- **Price Monitor strip** — per-store health with EKG-style pulse traces: Healthy / Recovered automatically / Attention
+- **Interactive price spotlight** — hover crosshair with tooltip scrubbing across the 14-day trend
+- **Collapsible sidebar** with persisted state, numbered section crumbs in the header, clickable stat band, and a `/` search shortcut on every page
 - Fully responsive (audited at 1280–1536px laptop and 390/768px mobile widths), WCAG-AA contrast tokens, focus-visible rings, reduced-motion support
 
 ## Architecture
@@ -144,7 +146,7 @@ The loop is visualised as the RUN → VALIDATE → RETRY → HEAL → RE-RUN →
 ```
 PriceGuardAI/
 ├── public/
-│   ├── css/style.css           # "Ledger" design system + components + responsive
+│   ├── css/style.css           # "SIGNAL DESK" design system + components + responsive
 │   ├── js/
 │   │   ├── api.js              # API client, Intel scoring, PGWatch/PGAlerts storage
 │   │   ├── app.js              # Shell behaviour: sidebar, profile, search shortcuts
@@ -277,8 +279,6 @@ Normalized and enriched before it reaches the dashboard:
 ![Products](docs/screenshots/products.png)
 ![Scraper Health](docs/screenshots/scraper-health.png)
 ![Alerts](docs/screenshots/alerts.png)
-
-> Screenshots predate the current "Ledger" light theme — re-capture before submitting if visuals matter for judging.
 
 ## Device-Local Data
 
