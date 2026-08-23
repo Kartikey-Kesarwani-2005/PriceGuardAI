@@ -414,6 +414,32 @@ section .section-head:first-child {
     color: var(--pine-text);
 }
 
+/* hamburger lives off-canvas on desktop; the ≤1100px block reveals it */
+.mobile-menu {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    width: 36px;
+    height: 36px;
+
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.mobile-menu svg {
+    width: 19px;
+    height: 19px;
+}
+
+.mobile-menu:hover {
+    background: rgba(23, 34, 30, 0.06);
+}
+
 .mobile-close {
     display: none;
 }
