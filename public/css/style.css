@@ -5468,3 +5468,94 @@ button, a, input, .chip {
     .grad-text::after { display: none; }
     .hm-live i, .system-status .status-dot { animation: none; }
 }
+
+/* ================================================================
+   BUY ACTIONS + CLICKABLE STATS
+   ================================================================ */
+
+.buy-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    height: 38px;
+    padding: 0 16px;
+
+    background: var(--green-deep);
+    color: #F6F4EF;
+    border-radius: 9px;
+
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+
+    transition: background 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease;
+}
+
+.buy-cta svg {
+    width: 15px;
+    height: 15px;
+}
+
+.buy-cta:hover {
+    background: #063d2b;
+    box-shadow: 0 8px 18px -10px rgba(11, 110, 79, 0.55);
+    transform: translateY(-1px);
+}
+
+.buy-cta:active {
+    transform: translateY(0);
+}
+
+/* inside the dark opportunity card */
+.opp-buy-cta {
+    height: 40px;
+    background: var(--green-bright, #4CC38A);
+    color: #10231B;
+}
+
+.opp-buy-cta:hover {
+    background: #63D49C;
+    box-shadow: 0 10px 22px -10px rgba(76, 195, 138, 0.5);
+}
+
+/* details page purchase row */
+.pd-buy-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+}
+
+.pd-buy-cta {
+    height: 44px;
+    padding: 0 20px;
+    font-size: 13.5px;
+    border-radius: 10px;
+}
+
+.buy-note {
+    font-size: 12px;
+    color: var(--faint);
+}
+
+/* stat cards act as links */
+.stat-card.clickable {
+    cursor: pointer;
+}
+
+.stat-card.clickable::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+}
+
+.stat-card {
+    position: relative;
+}

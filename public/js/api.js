@@ -97,6 +97,25 @@ const Intel = {
     },
 
     /* data trust from real tracking fields — plain words, no badge soup */
+    /* real purchase link: live-tracked product page when we have one,
+       otherwise a store search for the exact product name */
+    buyUrl(p) {
+        if (!p) return '#';
+        const live = p._source === 'live' || p._source === 'live-healed';
+        if (live && p.url && /^https?:\/\//i.test(p.url)) return p.url;
+        const q = encodeURIComponent(p.name || '');
+        const s = String(p.store || '').toLowerCase();
+        if (s.includes('flipkart')) return 'https://www.flipkart.com/search?q=' + q;
+        if (s.includes('croma')) return 'https://www.croma.com/search?q=' + q;
+        return 'https://www.amazon.in/s?k=' + q;
+    },
+
+    buyCta(p, cls = 'buy-cta') {
+        if (!p) return '';
+        const store = this.esc(p.store || 'Store');
+        return `<a class="${cls}" href="${this.esc(this.buyUrl(p))}" target="_blank" rel="noopener noreferrer" aria-label="Buy at ${store} (opens in new tab)" title="Opens ${store} in a new tab">${Layout.icons.bag}<span>Buy at ${store}</span></a>`;
+    },
+
     freshness(p) {
         if (p._source === 'live-healed' && !p.error) return { label: 'Recovered automatically', cls: 'recent' };
         if (p.error || p.stale) return { label: 'Last verified long ago', cls: 'stale' };

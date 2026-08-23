@@ -224,6 +224,7 @@ function buildOppCard(p, hist) {
                 </span>
             </div>
             <div class="opp-foot">
+                ${Intel.buyCta(p, 'buy-cta opp-buy-cta')}
                 <a class="foot-link" href="${detailsHref}">Full history ${Layout.icons.arrowRight}</a>
                 <a class="foot-ghost" href="products.html?cat=${encodeURIComponent(p.category)}&preselect=${encodeURIComponent(p.id)}">Compare stores ${Layout.icons.arrowRight}</a>
             </div>
@@ -586,6 +587,29 @@ function renderHealth() {
 }
 
 /* ---------- boot ---------- */
+
+/* stat cards are real shortcuts — click through to the page behind the number */
+(function makeStatsClickable() {
+    const map = {
+        stProducts: { href: 'products.html', label: 'Open Compare' },
+        stScore: { href: 'products.html', label: 'Open Compare' },
+        stHits: { href: 'alerts.html', label: 'See target alerts' },
+        stAlerts: { href: 'alerts.html', label: 'Open Alerts' }
+    };
+    Object.entries(map).forEach(([id, cfg]) => {
+        const el = $id(id);
+        const card = el && el.closest('.stat-card');
+        if (!card) return;
+        card.classList.add('clickable');
+        card.setAttribute('role', 'link');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', cfg.label);
+        card.title = cfg.label;
+        const go = () => { window.location.href = cfg.href; };
+        card.addEventListener('click', go);
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    });
+})();
 
 wireHero();
 loadPopular();

@@ -93,6 +93,19 @@ function renderHeader(d) {
     }
     if (cur) cur.textContent = fmtINR(d.summary.current);
 
+    /* real purchase row — live product link or store search fallback */
+    const head = document.querySelector('.detail-head');
+    if (head && !document.getElementById('pdBuyRow')) {
+        head.insertAdjacentHTML('afterend', `
+            <div class="pd-buy-row" id="pdBuyRow">
+                ${Intel.buyCta(d, 'buy-cta pd-buy-cta')}
+                <span class="buy-note">${d._source === 'live' || d._source === 'live-healed'
+                    ? 'Verified listing — opens in a new tab.'
+                    : 'Opens a store search for this exact model.'}</span>
+                ${Intel.freshness(d).label ? `<span class="fresh-chip ${Intel.freshness(d).cls}"><i></i>${esc(Intel.freshness(d).label)}</span>` : ''}
+            </div>`);
+    }
+
     if (trend) {
         const avg = d.summary.average;
         if (avg > 0) {
