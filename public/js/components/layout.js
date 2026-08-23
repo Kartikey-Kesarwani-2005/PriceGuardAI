@@ -106,6 +106,21 @@ const Layout = {
         return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
     },
 
+    crumb() {
+        const file = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+        const map = {
+            'index.html': ['01', 'Signal Desk'],
+            'products.html': ['02', 'Compare'],
+            'product-details.html': ['02', 'Product Intel'],
+            'alerts.html': ['03', 'Alerts'],
+            'watchlist.html': ['04', 'Watchlist'],
+            'scrapers.html': ['05', 'Insights'],
+            'settings.html': ['06', 'Settings']
+        };
+        const hit = map[file] || map['index.html'];
+        return `<div class="crumb" aria-hidden="true"><span class="crumb-num">${hit[0]}</span><span class="crumb-name">${hit[1]}</span></div>`;
+    },
+
     renderHeader() {
         const user = this.getCurrentUser();
         const name = user ? user.name : 'Guest';
@@ -115,7 +130,7 @@ const Layout = {
         <header class="header">
             <button class="mobile-menu" id="openSidebar" aria-label="Open menu">${this.icons.menu}</button>
             <button class="icon-btn sidebar-toggle" id="sidebarToggle" title="Toggle menu" aria-label="Toggle menu" aria-expanded="true">${this.icons.menu}</button>
-            <div class="search-box">${this.icons.search}<input type="text" id="globalSearch" placeholder="Search a product…" autocomplete="off"><span class="kbd">/</span></div>
+            ${this.crumb()}
             <div class="header-right">
                 <a class="icon-btn" href="settings.html" title="Settings" aria-label="Settings">${this.icons.settings}</a>
                 <button class="notification-button" id="notificationBtn" title="Alerts" aria-label="Alerts">${this.icons.bell}<span class="notification-dot"></span></button>

@@ -269,30 +269,24 @@ s{color:var(--faint);font-family:var(--font-mono);font-size:.82em;text-decoratio
     body.sidebar-hidden .sidebar{margin-left:calc(-1 * var(--sidebar-w))}
 }
 
-.search-box{
-    flex:1 1 0;min-width:0;max-width:520px;
-    display:flex;align-items:center;gap:9px;
-    height:40px;
-    padding:0 12px;
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:999px;
-    color:var(--faint);
-    transition:border-color .18s,box-shadow .18s;
+.crumb{
+    display:flex;align-items:center;gap:10px;
+    min-width:0;
+    font-family:var(--font-mono);
+    font-size:11px;font-weight:500;
+    letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-2);
 }
-.search-box:focus-within{border-color:var(--acc);box-shadow:0 0 0 3px rgba(11,122,84,.12);color:var(--acc)}
-.search-box svg{width:16px;height:16px;flex:none}
-.search-box input{
-    flex:1;min-width:0;border:none;outline:none;background:transparent;
-    color:var(--ink);font-size:13.5px;
+.crumb::before{
+    content:'';width:7px;height:7px;flex:none;
+    background:var(--acc);border-radius:1.5px;
 }
-.search-box input::placeholder{color:var(--faint)}
-.kbd{
-    font-family:var(--font-mono);font-size:10.5px;color:var(--mut);
-    padding:2px 7px;border-radius:5px;
-    background:var(--paper-deep);
-    box-shadow:inset 0 0 0 1px var(--line);
+.crumb-num{
+    color:var(--acc);
+    padding-right:10px;
+    border-right:1px solid var(--line);
 }
+.crumb-name{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
 .icon-btn{
@@ -2343,7 +2337,6 @@ s{color:var(--faint);font-family:var(--font-mono);font-size:.82em;text-decoratio
     .form-grid{grid-template-columns:1fr}
     .setting-row{flex-direction:column;align-items:flex-start;gap:12px}
     .profile-menu{right:10px;left:10px;width:auto}
-    .search-box .kbd{display:none}
     .compare-modal{padding:10px}
     .compare-header{padding:14px 16px}
     .compare-body{padding:2px 12px 16px}

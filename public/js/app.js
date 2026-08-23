@@ -203,38 +203,14 @@ if (profileBtn && profileMenu) {
     }
 }
 
-const globalSearch = document.getElementById('globalSearch');
-const pageSearch = document.getElementById('productSearch');
-
-function applyGlobalSearch(value) {
-    const query = value.trim();
-    if (pageSearch) {
-        pageSearch.value = query;
-        pageSearch.dispatchEvent(new Event('input'));
-    } else if (query) {
-        window.location.href = 'products.html?search=' + encodeURIComponent(query);
-    }
-}
-
-if (globalSearch) {
-    globalSearch.addEventListener('keydown', e => {
-        if (e.key === 'Enter') applyGlobalSearch(globalSearch.value);
-    });
-    if (pageSearch) {
-        let debounce;
-        globalSearch.addEventListener('input', () => {
-            clearTimeout(debounce);
-            debounce = setTimeout(() => applyGlobalSearch(globalSearch.value), 300);
-        });
-    }
-}
+const pageSearchEl = () => document.getElementById('heroSearch') || document.getElementById('productSearch');
 
 document.addEventListener('keydown', e => {
     const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
 
-    if (e.key === '/' && !typing && globalSearch) {
-        e.preventDefault();
-        globalSearch.focus();
+    if (e.key === '/' && !typing) {
+        const s = pageSearchEl();
+        if (s) { e.preventDefault(); s.focus(); }
         return;
     }
 
@@ -243,7 +219,8 @@ document.addEventListener('keydown', e => {
         if (sidebar && sidebar.classList.contains('sidebar-open')) sidebar.classList.remove('sidebar-open');
         const compareModal = document.getElementById('compareModal');
         if (compareModal && !compareModal.classList.contains('hidden')) compareModal.classList.add('hidden');
-        if (globalSearch === document.activeElement) globalSearch.blur();
+        const s = pageSearchEl();
+        if (s === document.activeElement) s.blur();
     }
 });
 
