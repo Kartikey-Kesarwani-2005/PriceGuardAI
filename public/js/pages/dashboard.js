@@ -82,11 +82,57 @@ async function loadPopular() {
 
 /* ---------- stats strip ---------- */
 
+function countUp(el, target) {
+    if (!el) return;
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced || !isFinite(target)) { el.textContent = String(target); return; }
+    const from = parseFloat((el.textContent || '').replace(/[^\d.-]/g, '')) || 0;
+    if (from === target) { el.textContent = target.toLocaleString('en-IN'); return; }
+    const start = performance.now(), dur = 850;
+    function frame(now) {
+        const t = Math.min(1, (now - start) / dur);
+        const eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = Math.round(from + (target - from) * eased).toLocaleString('en-IN');
+        if (t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+}
+
 function fillBaseStats(topScore) {
-    const set = (id, v) => { const el = $id(id); if (el) el.textContent = v; };
-    set('stProducts', PRODUCTS.length);
-    set('stHits', PRODUCTS.filter(p => p.target && p.price && p.price <= p.target).length);
-    if (typeof topScore === 'number') set('stScore', topScore);
+    const hits = PRODUCTS.filter(p => p.target && p.price && p.price <= p.target).length;
+    countUp($id('stProducts'), PRODUCTS.length);
+    countUp($id('stHits'), hits);
+    const roT = $id('roTracked'); if (roT) roT.textContent = PRODUCTS.length + ' products';
+    const roH = $id('roHits'); if (roH) roH.textContent = hits;
+    if (typeof topScore === 'number') {
+        countUp($id('stScore'), Math.round(topScore));
+        const roS = $id('roScore'); if (roS) roS.textContent = Math.round(topScore) + ' / 100';
+    }
+}
+
+/* ---------- ticker tape · real tracked prices ---------- */
+
+function buildTape() {
+    const run = $id('priceTape');
+    if (!run || !PRODUCTS.length) return;
+    const picks = [...PRODUCTS]
+        .filter(p => p.price > 0)
+        .sort((a, b) => Intel.discount(b) - Intel.discount(a))
+        .slice(0, 14);
+    if (!picks.length) { run.innerHTML = ''; return; }
+    const item = p => {
+        const disc = Intel.discount(p);
+        const hit = p.target && p.price <= p.target;
+        const name = p.name.length > 36 ? p.name.slice(0, 35).trimEnd() + '…' : p.name;
+        const note = hit
+            ? '<span class="tp-note hit">target hit</span>'
+            : disc > 0 ? `<span class="tp-note drop">−${disc}% MRP</span>`
+            : `<span class="tp-note">${Intel.esc(p.store)}</span>`;
+        return `<span class="tp-item"><strong>${formatPrice(p.price)}</strong> ${Intel.esc(name)} ${note}</span>`;
+    };
+    /* duplicated once so the translateX(-50%) loop is seamless */
+    const seq = picks.map(item).join('');
+    run.innerHTML = seq + seq;
 }
 
 /* ---------- shared intelligence flow ---------- */
@@ -107,6 +153,7 @@ async function intelFlow() {
         .sort((a, b) => b.s - a.s);
 
     fillBaseStats(scored.length ? scored[0].s : undefined);
+    buildTape();
     loadAIStatus();
 
     if (!scored.length) {
@@ -359,7 +406,58 @@ function drawSpotChart(p) {
             ${lowMark}
             <path d="${lineD}" class="price-line animatable" pathLength="1"/>
             ${nowMark}
-        </svg>`;
+            <line id="spotHoverX" class="hover-x" y1="${P.t}" y2="${(P.t + ih).toFixed(1)}" opacity="0"/>
+            <circle id="spotHoverDot" r="4.5" class="hover-dot" opacity="0"/>
+            <rect x="${P.l}" y="${P.t}" width="${iw}" height="${ih}" fill="transparent" id="spotHit"/>
+        </svg>
+        <div class="chart-tip" id="spotTip"></div>`;
+
+    bindSpotHover(host, pts, n, P, iw, X, Y);
+}
+
+function bindSpotHover(wrap, pts, n, P, iw, X, Y) {
+    const svg = wrap.querySelector('.spot-svg');
+    const hit = document.getElementById('spotHit');
+    const tip = document.getElementById('spotTip');
+    const dot = document.getElementById('spotHoverDot');
+    const crossX = document.getElementById('spotHoverX');
+    if (!svg || !hit || !tip || !dot || !crossX) return;
+
+    function show(clientX) {
+        const rect = svg.getBoundingClientRect();
+        const vbW = svg.viewBox.baseVal.width;
+        const vbH = svg.viewBox.baseVal.height;
+        const step = n > 1 ? iw / (n - 1) : 1;
+        const vx = (clientX - rect.left) * (vbW / rect.width);
+        let idx = Math.round((vx - P.l) / step);
+        idx = Math.max(0, Math.min(n - 1, idx));
+        const pt = pts[idx];
+        const px = X(idx), py = Y(pt.price);
+
+        dot.setAttribute('cx', px.toFixed(1));
+        dot.setAttribute('cy', py.toFixed(1));
+        dot.setAttribute('opacity', 1);
+        crossX.setAttribute('x1', px.toFixed(1));
+        crossX.setAttribute('x2', px.toFixed(1));
+        crossX.setAttribute('opacity', 1);
+
+        tip.innerHTML = `<strong>${formatPrice(pt.price)}</strong><span>${Intel.esc(fmtTickShort(pt.date))}</span>`;
+        tip.style.opacity = 1;
+        const sx = px * (rect.width / vbW);
+        let tx = sx + 14;
+        if (tx + tip.offsetWidth > wrap.clientWidth - 4) tx = sx - tip.offsetWidth - 14;
+        tip.style.left = tx + 'px';
+        tip.style.top = Math.max(4, py * (rect.height / vbH) - 46) + 'px';
+    }
+
+    function hide() {
+        dot.setAttribute('opacity', 0);
+        crossX.setAttribute('opacity', 0);
+        tip.style.opacity = 0;
+    }
+
+    hit.addEventListener('mousemove', e => show(e.clientX));
+    hit.addEventListener('mouseleave', hide);
 }
 
 function fmtTickShort(iso) {
@@ -442,7 +540,7 @@ async function loadAlertsPrev() {
     try {
         const alerts = await jget('/api/alerts');
         const counter = $id('stAlerts');
-        if (counter) counter.textContent = alerts.length;
+        if (counter) countUp(counter, alerts.length);
 
         if (!alerts.length) {
             box.innerHTML = `
@@ -538,10 +636,11 @@ async function renderPriceMonitor() {
             }
             if (data.mode === 'demo') note = note || 'Demo feed';
             return `
-            <div class="mon-row">
+            <div class="mon-row ${cls}">
                 <span class="mon-store">${Intel.esc(name)}</span>
                 <span class="mon-status ${cls}"><i></i>${label}</span>
                 <span class="mon-note">${Intel.esc(note || (rate === null ? 'Awaiting first check' : rate + '% checks successful'))}</span>
+                <svg class="mon-pulse" viewBox="0 0 240 14" preserveAspectRatio="none" aria-hidden="true"><path d="M0 8 H64 L72 8 78 2 84 12 90 5 96 8 H148 L156 8 162 3 168 11 174 6 180 8 H240"/></svg>
             </div>`;
         }).join('');
     } catch (err) {
@@ -588,26 +687,16 @@ function renderHealth() {
 
 /* ---------- boot ---------- */
 
-/* stat cards are real shortcuts — click through to the page behind the number */
+/* stat cells are real shortcuts — click through to the page behind the number */
 (function makeStatsClickable() {
-    const map = {
-        stProducts: { href: 'products.html', label: 'Open Compare' },
-        stScore: { href: 'products.html', label: 'Open Compare' },
-        stHits: { href: 'alerts.html', label: 'See target alerts' },
-        stAlerts: { href: 'alerts.html', label: 'Open Alerts' }
-    };
-    Object.entries(map).forEach(([id, cfg]) => {
-        const el = $id(id);
-        const card = el && el.closest('.stat-card');
-        if (!card) return;
-        card.classList.add('clickable');
-        card.setAttribute('role', 'link');
-        card.setAttribute('tabindex', '0');
-        card.setAttribute('aria-label', cfg.label);
-        card.title = cfg.label;
-        const go = () => { window.location.href = cfg.href; };
-        card.addEventListener('click', go);
-        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    document.querySelectorAll('.statband-cell[data-href]').forEach(cell => {
+        const label = cell.querySelector('.statband-label');
+        cell.setAttribute('role', 'link');
+        cell.setAttribute('tabindex', '0');
+        cell.setAttribute('aria-label', label ? label.textContent : 'Open');
+        const go = () => { window.location.href = cell.dataset.href; };
+        cell.addEventListener('click', go);
+        cell.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
     });
 })();
 
