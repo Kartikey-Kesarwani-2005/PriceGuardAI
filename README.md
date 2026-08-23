@@ -1,38 +1,49 @@
 # PriceGuard AI
 
-AI-powered price monitoring and inventory intelligence platform that tracks product prices across multiple Indian e-commerce stores using **Bright Data Scraper Studio** and managed pipelines — with a built-in self-healing loop that keeps scrapers working when websites change.
+**Know the Price. Know the Moment.**
+
+PriceGuard is a price-intelligence platform that watches 160+ products across Amazon, Flipkart and Croma — scraping through **Bright Data Scraper Studio** and managed pipelines, validating every extraction, and **auto-repairing broken scrapers** with Studio's AI heal API. Every number in the UI carries its own verification time: you always know whether a price is live, recovered, or the last known good value.
+
+---
+
+## The Problem
+
+The same product sells at three different prices across three stores — and those prices move daily. Manually checking is hopeless; naive scrapers break every time a site changes its markup; and most trackers show numbers without telling you how fresh or trustworthy they are.
+
+PriceGuard answers three questions for any product:
+
+1. **What is the price right now — and can I trust it?**
+2. **Is this a good moment to buy?** (Deal Score + Buy/Wait verdict)
+3. **When should I be alerted?** (target prices, drop detection)
 
 ## Features
 
 ### Tracking engine
 
-- **Multi-store Price Tracking** — Monitors products across Amazon, Flipkart, and Croma
-- **Target Price Alerts** — Get notified when product prices drop below your desired target
-- **Stock Monitoring** — Tracks product availability and flags out-of-stock items
-- **Scraper Studio Integration** — Custom AI-generated scrapers for stores without pre-built pipelines
-- **Self-Healing Scrapers** — Automatic detection of broken extractions and one-command repair via Scraper Studio's heal API
-- **Multi-Key Failover** — Pool multiple Bright Data API keys; an exhausted or rejected key rotates to the next automatically, mid-scrape
-- **Real Health Metrics** — Per-product success rates, failure reasons, and heal counts (no fake numbers)
-- **Stale-Safe Fallback** — If live extraction fails, last known good data is served with an explicit "stale" flag instead of wrong data
-- **Discount Detection** — Identifies products with significant price drops (20%+ off)
-- **Price History** — Tracked price snapshots per product with 7d/30d/90d/1y views
+- **Multi-store tracking** — Amazon, Flipkart, Croma with per-store routing
+- **Self-healing scrapers** — failed validations trigger Scraper Studio's `scraper heal`; Bright Data's AI rewrites broken selectors against the same collector ID
+- **Stale-safe fallback** — if everything fails, last known good data is served explicitly flagged `stale` instead of wrong data
+- **Credential slot chain** — CLI stored login first, then a pool of API keys; exhausted keys rotate mid-scrape, deactivated accounts are detected (`Customer is not active`) and skipped permanently
+- **Per-account collector registries** — each key's account keeps its own collectors (`data/collectors-kN.json`); stale cross-account IDs are auto-removed and retried on the next account
+- **Real health metrics** — attempts, successes, failures, heals and success rates tracked per product in `data/cache.json`. Nothing hardcoded.
+- **Target price alerts & stock monitoring**, price history with 7d/30d/90d/1y views
 
 ### Intelligence layer (client-side, deterministic)
 
-- **Deal Score (0–100)** — Explainable score built from five transparent buckets: target fit (35), vs typical price (30), MRP discount (20), availability (10), data freshness (5)
-- **Buy / Wait verdicts** — Three-tier recommendation (Buy now · Good deal · Wait) with a data-backed reason for every call
-- **Trend detection** — Falling / Stable / Rising classification from tracked history points
-- **Price Insights** — Plain-language explanation of what the numbers mean, generated only from real tracked prices
+- **Deal Score (0–100)** — explainable score from five transparent buckets: target fit (35), vs typical price (30), MRP discount (20), availability (10), freshness (5). Rendered as an animated radial ring.
+- **Buy / Wait verdicts** — Buy now · Good deal · Wait, each with a data-backed reason ("23% below 30-day average")
+- **Best Opportunity card** — the single strongest deal of the day, dominant on the dashboard, with drop-vs-average and a direct buy link
+- **Buy at store CTAs** — live-tracked products deep-link to the verified listing; others open a store search for the exact model
 
-### Experience layer
+### Experience layer — "The Ledger" design system
 
-- **Premium dark dashboard** — Glassmorphism UI with hero search, live stats, spotlight deal and a trending rail
-- **Watchlist** — Star any product; the watchlist shows Deal Score, Buy/Wait status and price movement since you starred it (baseline price captured at star time), with quick actions: View, Set Alert, Remove
-- **Device-local price alerts** — Set a target price on any card; a progress zone tracks how far the current price is from your target, with savings preview
-- **Insights page** — Market pulse (falling/stable/rising counts), best deals ranked by Deal Score, featured trend chart and per-product intelligence rows
-- **Product comparison** — Side-by-side spec comparison within a category
-- **Fully responsive** — Verified with automated overflow audits at 1280–1536px laptop widths and 390/768px mobile layouts
-- **Accessible** — WCAG AA contrast tokens, single heading hierarchy per page, keyboard focus states, labelled icon buttons and switch semantics
+- Editorial serif hero (Fraunces) with tabular-numeral pricing (IBM Plex Mono) on warm paper tones with deep-pine accents
+- **Trust labels everywhere** — "Verified 42 sec ago", "Last verified 2h ago", "Recovered automatically"
+- **Meaningful loading states** — rotating human phrases ("Comparing stores…", "Verifying price data…") instead of skeletons
+- **Store ledger** — typographic store comparison ranked by average discount
+- **PRICE MONITOR strip** — live per-store health: Healthy / Recovered automatically / Attention
+- **Clickable stat cards**, keyboard-accessible, each jumping to the page behind its number
+- Fully responsive (audited at 1280–1536px laptop and 390/768px mobile widths), WCAG-AA contrast tokens, focus-visible rings, reduced-motion support
 
 ## Architecture
 
@@ -57,35 +68,45 @@ AI-powered price monitoring and inventory intelligence platform that tracks prod
                               │                       │
         ┌─────────────────────▼───────┐   ┌───────────▼──────────────────┐
         │      lib/scraperEngine.js   │   │   data/cache.json (v2)       │
-        │  store routing + validation │   │  products · stats · settings │
-        └──────┬──────────┬──────────┬┘   └──────────────────────────────┘
-               │          │          │
-     ┌─────────▼──┐ ┌─────▼─────┐ ┌──▼──────────┐
-     │  Amazon    │ │ Flipkart  │ │   Croma     │
-     │ pre-built  │ │ Scraper   │ │  Scraper    │
-     │ pipeline:  │ │ Studio    │ │  Studio     │
-     │ amazon_    │ │ collector │ │  collector  │
-     │ product_   │ │ (AI-built)│ │  (AI-built) │
-     │ search     │ └─────┬─────┘ └──┬──────────┘
-     └─────────┬──┘       │          │
-               │          └──────────┘
-               ▼    Bright Data CLI (bdata)
-        proxies · CAPTCHA solving · JS rendering · unblocking
+        │  credential slots chain     │   │  products · stats · settings │
+        │  store routing + validation │   │  + price history snapshots   │
+        └──────┬──────────┬───────────┘   └──────────────────────────────┘
+               │          │
+     ┌─────────▼──┐ ┌─────▼─────┐ ┌──────────────┐
+     │  Amazon    │ │ Flipkart  │ │   Croma      │
+     │ managed    │ │ Scraper   │ │  Scraper     │
+     │ pipeline:  │ │ Studio    │ │  Studio      │
+     │ amazon_    │ │ collector │ │  collector   │
+     │ product_   │ │ (AI-built)│ │  (AI-built)  │
+     │ search     │ └─────┬─────┘ └──────┬───────┘
+     └─────┬──────┘       └──────────────┘
+           ▼    Bright Data CLI (bdata)
+     proxies · CAPTCHA solving · JS rendering · unblocking
 ```
+
+## Credential Chain (account-level resilience)
+
+```
+slot 0: bdata CLI stored login          ← preferred, no key management
+slot 1: BRIGHTDATA_API_KEYS[0]
+slot 2: BRIGHTDATA_API_KEYS[1] ...
+```
+
+- A failing slot rotates to the next **mid-scrape**
+- Deactivated/expired accounts are detected by their error signature and **permanently skipped** for the process lifetime; the chain rewinds to the first healthy slot
+- Collector registries are per-slot: if a collector ID doesn't exist under the active account, it is removed and the next account's registry is tried
 
 ## How the Scrapers Work
 
-PriceGuard uses the right Bright Data tool for each store:
-
 | Store | Method | Why |
 |-------|--------|-----|
-| Amazon | Pre-built pipeline `amazon_product_search` via `bdata pipelines` | Managed dataset, structured output out of the box |
-| Flipkart | **Scraper Studio** custom collector via `bdata scraper run` | No pre-built pipeline — AI Agent builds and owns the scraper |
+| Amazon | Managed pipeline `amazon_product_search` via `bdata pipelines` | Structured dataset out of the box |
+| Flipkart | **Scraper Studio** custom collector via `bdata scraper run` | No pre-built pipeline — the AI Agent builds and owns the scraper |
 | Croma | **Scraper Studio** custom collector via `bdata scraper run` | Same as above |
 
 ### The Self-Healing Loop
 
-Websites change constantly. PriceGuard treats extraction failures as first-class signals and repairs scrapers automatically using Scraper Studio's heal API:
+Websites change constantly. PriceGuard treats extraction failures as first-class signals and repairs scrapers automatically:
 
 ```
  1. RUN        bdata pipelines / bdata scraper run
@@ -93,7 +114,7 @@ Websites change constantly. PriceGuard treats extraction failures as first-class
  2. VALIDATE   schema checks on extracted JSON:
        │       • record with valid price exists?
        │       • price > 0 and plausible vs target?
-       │       • title matches requested product? (token overlap)
+       │       • title matches requested product? (token overlap scoring)
        ▼
  3. RETRY      transient failures get one automatic retry
        │
@@ -104,166 +125,122 @@ Websites change constantly. PriceGuard treats extraction failures as first-class
        ▼
  5. RE-RUN     verify the healed scraper produces valid data
        │
- 6. FALLBACK   if everything fails: serve last known good data
-               flagged stale:true + raise a "Stale data" alert
+ 6. FALLBACK   serve last known good data flagged stale:true
 ```
 
-The loop is also resilient at the account level: multiple Bright Data API keys form a pool (`BRIGHTDATA_API_KEYS`) and exhausted/rejected keys rotate automatically mid-scrape.
+The loop is visualised as the RUN → VALIDATE → RETRY → HEAL → RE-RUN → VERIFIED pipeline on the Insights page, and surfaced per-product through trust labels.
 
-Every step is tracked per product in `data/cache.json`: attempts, successes, failures, heals, last error. The Scraper Health page shows these **real** success rates — nothing is hardcoded.
-
-> **How to read the numbers:** a success rate below 100% is expected and honest — e-commerce pages change constantly, so some extractions legitimately fail validation (implausible price vs target, mismatched title). Every failure is logged with its exact reason (visible on the Insights page and in `data/cache.json`), the `heals` counter shows where Scraper Studio's AI rewrote broken selectors, and `stale` flags mark products being served from their last known good snapshot instead of wrong data.
+> **How to read the health numbers:** a success rate below 100% is expected and honest — e-commerce pages change constantly, so some extractions legitimately fail validation. Every failure logs its exact reason, the `heals` counter shows where Studio's AI rewrote selectors, and `stale` flags mark last-known-good fallbacks. Wrong data never reaches the UI.
 
 ## Tech Stack
 
 - **Backend:** Node.js, Express.js
-- **Frontend:** Vanilla HTML, CSS, JavaScript
-- **Scraping:** Bright Data CLI (`@brightdata/cli`) — Web Scraper API pipelines + Scraper Studio collectors with AI self-healing
-- **Stores:** Amazon India, Flipkart, Croma
+- **Frontend:** Vanilla HTML/CSS/JS — no framework, no build step
+- **Scraping:** Bright Data CLI (`@brightdata/cli`) — managed pipelines + Scraper Studio collectors with AI self-healing
+- **Testing:** Node built-in test runner (`node --test`), plus headless-Chrome overflow and UX/a11y audits
 
 ## Project Structure
 
 ```
 PriceGuardAI/
-├── public/                     # Frontend static files
-│   ├── css/style.css           # Styles (design tokens, components, responsive)
+├── public/
+│   ├── css/style.css           # "Ledger" design system + components + responsive
 │   ├── js/
-│   │   ├── api.js              # API client + Intel scoring + PGWatch/PGAlerts storage
-│   │   ├── app.js              # Sidebar toggle, profile menu, notification badge
-│   │   ├── components/layout.js# Shared shell: sidebar, header, page scaffold
-│   │   └── pages/              # Page scripts (dashboard, products, watchlist,
-│   │                           #  alerts, scrapers/insights, details, settings)
-│   ├── index.html              # Dashboard (hero search, stats, spotlight, rail)
+│   │   ├── api.js              # API client, Intel scoring, PGWatch/PGAlerts storage
+│   │   ├── app.js              # Shell behaviour: sidebar, profile, search shortcuts
+│   │   ├── components/layout.js# Shared shell: sidebar, header, loadphrase helper
+│   │   └── pages/              # dashboard, products, watchlist, alerts,
+│   │                           # scrapers (Insights), product-details, settings
+│   ├── index.html              # Hero search, stats, Best Opportunity, monitor strip
 │   ├── products.html           # Products + compare selection
-│   ├── product-details.html    # Price history graph, deal intelligence, alert card
+│   ├── product-details.html    # History chart with LOW/AVG/TARGET markers, buy CTA
 │   ├── alerts.html             # Server alerts + device-local target alerts
 │   ├── watchlist.html          # Starred products with movement since starring
-│   ├── scrapers.html           # Insights: market pulse, best deals, trends,
-│   │                           #  store reliability and advanced scraper monitors
+│   ├── scrapers.html           # Insights: market pulse, best deals, heal pipeline,
+│   │                           #  store reliability, advanced scraper monitors
 │   └── settings.html           # Demo mode, monitoring interval, PIN lock
 ├── lib/
-│   ├── scraperEngine.js        # Store routing, CLI execution, JSON parsing, validation
+│   ├── scraperEngine.js        # Credential slots, CLI execution, JSON parsing,
+│   │                           #  validation, collector registries
 │   └── healer.js               # Retry + self-healing orchestration, health stats
-├── routes/
-│   └── products.js             # API routes, caching & price history snapshots
+├── routes/products.js          # API routes, caching, price history snapshots
 ├── scripts/
-│   ├── setup-scrapers.js       # One-time: creates Studio collectors for Flipkart/Croma
-│   └── collect-keys.js         # Gathers API keys from `bdata login` sessions into a pool
+│   ├── setup-scrapers.js       # One-time: creates Studio collectors via AI Agent
+│   └── collect-keys.js         # Gathers API keys from `bdata login` sessions
 ├── data/
-│   ├── cache.json              # Product cache v2 + health stats + settings + history
-│   └── collectors.json         # Scraper Studio collector IDs (created by setup)
-├── server.js                   # Express server entry point
-├── .overflow_audit.js          # Headless-Chrome horizontal-overflow audit (dev tool)
-├── .ux_audit.js                # Headless UX/a11y audit: links, states, headings (dev tool)
+│   ├── cache.json              # Product cache v2 + health stats + history
+│   └── collectors.json         # Studio collector IDs (managed per key account)
+├── server.js                   # Express entry point
+├── .overflow_audit.js          # Headless horizontal-overflow audit (dev tool)
+├── .ux_audit.js                # Headless UX/a11y audit (dev tool)
 └── package.json
 ```
 
-## Prerequisites
-
-- [Node.js](https://nodejs.org/) (v18+)
-- A [Bright Data](https://www.brightdata.com/) account (free tier includes 5,000 credits/month)
-
-## Installation
+## Quick Start
 
 ```bash
-# Clone the repository
 git clone <repository-url>
 cd PriceGuardAI
-
-# Install dependencies
 npm install
+cp .env.example .env          # add your Bright Data API key(s)
+npm start                     # http://localhost:3000
 ```
+
+The app boots in **Demo mode** (sample data, instant load). Go live via **Settings → Demo mode OFF**.
 
 ## Configuration
 
-PriceGuard reads its Bright Data API keys from a `.env` file (Node loads it natively via `--env-file-if-exists`, so no OS-specific shell commands are needed):
-
-```bash
-cp .env.example .env
-```
+Keys load natively via Node `--env-file-if-exists` — no OS-specific shell needed:
 
 ```env
-# Comma-separated pool of API keys - rotation across accounts is automatic
+# comma-separated pool; rotation across accounts is automatic
 BRIGHTDATA_API_KEYS=key1,key2,key3
 ```
 
-Get each key from [Account Settings → API keys](https://brightdata.com/cp/setting/users) → **Add API key** (use **Ops** permissions; no billing access needed).
-
-Collecting keys from multiple free-tier teammate accounts? Use the helper — for each account run `bdata login`, then save the key:
+Collecting keys from multiple free-tier accounts:
 
 ```bash
-npx -p @brightdata/cli bdata login      # browser opens, log in with that account
-node scripts/collect-keys.js add        # saves the stored key to data/bd-keys.txt (gitignored)
-node scripts/collect-keys.js            # list collected keys + ready-to-paste pool string
+npx -p @brightdata/cli bdata login      # browser opens; log in with that account
+node scripts/collect-keys.js add        # saves key to data/bd-keys.txt (gitignored)
+node scripts/collect-keys.js            # list keys + ready-to-paste pool string
 ```
 
-Then create the Scraper Studio collectors for Flipkart and Croma (one-time per account, takes a few minutes — the AI Agent builds both scrapers):
+Create the Studio collectors (one-time per account; the AI Agent builds both scrapers, ~15–20 min):
 
 ```bash
-npm run setup:scrapers        # uses key #1 from the pool
-npm run setup:scrapers -- k2  # creates collectors for key #2's account -> data/collectors-k2.json
+npm run setup:scrapers        # uses key #1 -> data/collectors.json
+npm run setup:scrapers -- k2  # key #2's account -> data/collectors-k2.json
 ```
 
-You can inspect or edit each collector in the [Studio dashboard](https://brightdata.com/cp/scrapers) at the printed `view_url`.
-
-## Running the App
-
-```bash
-npm start
-```
-
-The app will be available at [http://localhost:3000](http://localhost:3000).
-
-The app starts in **Demo mode** (sample data, instant load). To go live, toggle **Settings → Demo mode OFF** — from then on every request runs through the real scraping pipeline with validation, retries, and self-healing.
+Inspect/edit each collector in the [Studio dashboard](https://brightdata.com/cp/scrapers) at the printed `view_url`.
 
 ## Demo Walkthrough (2 minutes)
 
-1. **Open the problem** — prices for the same product vary across Amazon, Flipkart and Croma, and deals disappear fast. PriceGuard watches 160 products across all three stores so you don't have to.
-2. **Dashboard** (`/`) — instant overview in demo mode; point out target-price hits and discount alerts.
-3. **Go live** — Settings → toggle **Demo mode OFF**, then hit **Refresh Data** on the dashboard. The scraper queue starts filling real prices (Amazon lands within seconds; Flipkart/Croma batch jobs take a few minutes).
-4. **Insights** (`/scrapers.html`) — market pulse tiles (falling/stable/rising), best deals ranked by Deal Score with Buy/Wait verdicts, and a featured trend chart for any product.
-5. **Star a product → Watchlist** (`/watchlist.html`) — Deal Score ring, price movement since starring, and one-tap quick actions (View / Set Alert / Remove).
-6. **Set a target alert** on any product card — the bell popover previews your savings and tracks progress from current price down to your target.
-7. **Scraper monitors** (Insights → Advanced) — real success rates per product, heal counts, stale flags. Explain the loop: *run → validate → retry → auto-heal via Scraper Studio → stale-safe fallback*.
-8. **Show resilience** — point at `data/cache.json`: every failed extraction is logged with its reason (e.g. *"extracted price ₹439 is implausibly low vs target ₹55,000"*), and wrong data never reaches the UI.
-
-## Device-Local Data
-
-Two lightweight layers live in `localStorage` so the demo works without accounts:
-
-| Key | Purpose |
-|-----|---------|
-| `pg_watchlist` | Starred product IDs |
-| `pg_watch_meta` | Per-star timestamp + captured price, powering "movement since starring" |
-| `pg_alerts` | Target-price alerts set from card popovers |
-
-All displayed prices, trends and scores come only from `/api/products` and the tracked history — nothing is fabricated client-side.
+1. **Dashboard** — instant overview: Best Opportunity card with Deal Score ring and "↓ N% below average", clickable stat cards, PRICE MONITOR strip showing per-store health.
+2. **Go live** — Settings → Demo mode OFF, then Refresh. Watch real prices land (Amazon within seconds).
+3. **Product details** — history chart with CURRENT / AVG / LOW / TARGET markers, Deal Score factors, Buy-at-store CTA, target alert with savings preview.
+4. **Insights** (`scrapers.html`) — market pulse, best deals ranked by Deal Score, and the **heal pipeline**: RUN → VALIDATE → RETRY → HEAL → RE-RUN → VERIFIED.
+5. **Show resilience** — Advanced monitors list real success rates, heal counts and stale flags. Point at `data/cache.json`: every failure is logged with its reason (*"extracted price ₹439 is implausibly low vs target ₹55,000"*).
+6. **Trust story** — hover any price: "Verified 42 sec ago" vs "Recovered automatically" vs "Stale feed". The UI never shows unverified data as fact.
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/products` | All monitored products with live prices + health stats |
-| GET | `/api/products/:id` | Specific product by ID |
-| GET | `/api/products/:id/history?range=7d\|30d\|90d\|1y` | Tracked price history + summary (current/lowest/highest/average) |
+| GET | `/api/products/:id` | Specific product |
+| GET | `/api/products/:id/history?range=7d\|30d\|90d\|1y` | Price history + summary |
 | GET | `/api/alerts` | Active alerts (price drops, stock, errors, stale data) |
-| GET | `/api/health` | Aggregate scraper health: success rates & heal counts per store |
+| GET | `/api/health` | Aggregate scraper health per store |
 | GET/POST | `/api/mode` | Get/toggle demo vs live mode |
-| GET/POST | `/api/settings` | Monitoring interval (15/30/60/360 minutes) |
+| GET/POST | `/api/settings` | Monitoring interval |
 | POST | `/api/refresh` | Trigger manual live refresh |
-| GET | `/api/categories` | Category → product ID map |
-| GET | `/api/compare?ids=a,b` | Compare products within a category |
-
-## Screenshots
-
-![Dashboard](docs/screenshots/dashboard.png)
-![Products](docs/screenshots/products.png)
-![Scraper Health](docs/screenshots/scraper-health.png)
-![Alerts](docs/screenshots/alerts.png)
+| GET | `/api/categories` | Category → product map |
+| GET | `/api/compare?ids=a,b` | Compare products in a category |
 
 ## Structured Output
 
-Every scraper returns clean, validated JSON. Raw listing from the Flipkart Scraper Studio collector:
+Raw listing from the Flipkart Scraper Studio collector:
 
 ```json
 {
@@ -276,39 +253,44 @@ Every scraper returns clean, validated JSON. Raw listing from the Flipkart Scrap
 }
 ```
 
-Normalized and enriched by PriceGuard before hitting the dashboard:
+Normalized and enriched before it reaches the dashboard:
 
 ```json
 {
   "id": "pixel-8",
   "name": "Google Pixel 8 (128GB)",
   "store": "Flipkart",
-  "target": 50000,
   "price": 55999,
   "originalPrice": 75999,
   "availability": "In Stock",
-  "rating": 4.4,
-  "reviews": 3421,
   "lastChecked": "2026-08-21T14:19:53Z",
   "_source": "live",
   "stats": { "attempts": 1, "successes": 1, "failures": 0, "heals": 0, "successRate": 100 }
 }
 ```
 
-`_source` tells you exactly where data came from: `live` (fresh scrape), `live-healed` (after an auto-repair), `stale` (last known good), or `demo` (sample data). Records that fail validation never reach the UI as wrong prices — they surface as errors or stale entries instead.
+`_source` values: `live` (fresh scrape) · `live-healed` (after auto-repair) · `stale` (last known good) · `demo` (sample data).
 
-## Monitored Product Categories
+## Screenshots
 
-| Category | Store | Target Price |
-|----------|-------|-------------|
-| Smartphones | Amazon, Flipkart | ₹30,000–₹65,000 |
-| Laptops | Amazon, Flipkart | ₹65,000–₹120,000 |
-| Headphones | Amazon, Croma | ₹3,000–₹50,000 |
-| Smartwatches | Amazon, Flipkart | ₹15,000–₹45,000 |
-| Tablets | Amazon, Flipkart | ₹30,000–₹60,000 |
-| Televisions | Flipkart | ₹35,000–₹100,000 |
-| Gaming Consoles | Amazon, Flipkart | ₹30,000–₹45,000 |
-| Air Conditioners | Flipkart | ₹32,000–₹42,000 |
+![Dashboard](docs/screenshots/dashboard.png)
+![Products](docs/screenshots/products.png)
+![Scraper Health](docs/screenshots/scraper-health.png)
+![Alerts](docs/screenshots/alerts.png)
+
+> Screenshots predate the current "Ledger" light theme — re-capture before submitting if visuals matter for judging.
+
+## Device-Local Data
+
+Two lightweight layers live in `localStorage` so the app works without accounts:
+
+| Key | Purpose |
+|-----|---------|
+| `pg_watchlist` | Starred product IDs |
+| `pg_watch_meta` | Star timestamp + captured price ("movement since starring") |
+| `pg_alerts` | Target-price alerts |
+
+All displayed prices, trends and scores come only from `/api/products` and tracked history — nothing is fabricated client-side.
 
 ## License
 
