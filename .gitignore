@@ -8,3 +8,4 @@ data/bd-keys.txt
 
 .vercel
 data/*.bak
+*.bak
