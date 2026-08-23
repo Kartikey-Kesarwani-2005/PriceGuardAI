@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#04060c">
+    <meta name="theme-color" content="#F6F4EF">
     <title>Product Details - PriceGuard AI</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='.55' stop-color='%238b5cf6'/%3E%3Cstop offset='1' stop-color='%23d946ef'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='24' height='24' rx='6' fill='%23070b14'/%3E%3Cpath d='M18.5 8.6c0 4.6-3.1 6.9-6 8.2a.9.9 0 0 1-.7 0c-2.9-1.3-6-3.6-6-8.2V4.9c0-.4.4-.8.8-.8 1.7 0 3.7-1 5-2.2a.9.9 0 0 1 1.2 0c1.4 1.2 3.3 2.2 5 2.2.4 0 .7.4.7.8z' fill='url(%23g)'/%3E%3Cpath d='m9.2 11.6 2 2 3.6-3.6' stroke='%23fff' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel='icon' type='image/svg+xml' href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%2314211B'/%3E%3Cpath d='M18.5 8.6c0 4.6-3.1 6.9-6 8.2a.9.9 0 0 1-.7 0c-2.9-1.3-6-3.6-6-8.2V4.9c0-.4.4-.8.8-.8 1.7 0 3.7-1 5-2.2a.9.9 0 0 1 1.2 0c1.4 1.2 3.3 2.2 5 2.2.4 0 .7.4.7.8z' fill='%233FA37E'/%3E%3Cpath d='m9.2 11.6 2 2 3.6-3.6' stroke='%23EFF4F0' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -23,7 +23,7 @@
                 </a>
             </div>
 
-            <div class="detail-card" id="pdLoading"><div class="loading">Loading product...</div></div>
+            <div class="detail-card" id="pdLoading"><div class="loadphrase" role="status"><span class="lp-msg">Reading tracked prices…</span><div class="lp-bar"><i></i></div></div></div>
 
             <div class="caught-up hidden" id="pdError">
                 <h3>Product not found</h3>
@@ -61,7 +61,7 @@
                     <div class="chart-head">
                         <div>
                             <h3 class="chart-title">Price history</h3>
-                            <p class="chart-sub" id="chartSub">Loading range...</p>
+                            <p class="chart-sub" id="chartSub">30-day view</p>
                         </div>
                         <div class="category-tabs" id="rangeTabs">
                             <button class="cat-tab" data-range="7d">7D</button>
@@ -71,11 +71,12 @@
                         </div>
                     </div>
                     <div class="chart-wrap" id="chartWrap">
-                        <div class="loading">Building chart...</div>
+                        <div class="loadphrase" role="status" aria-live="polite" data-phrases="Building your price history…|Checking historical trends…"><span class="lp-msg">Building your price history…</span><div class="lp-bar"><i></i></div></div>
                     </div>
                     <div class="chart-legend">
                         <span><i class="lg-swatch lg-line"></i>Daily price</span>
                         <span><i class="lg-swatch lg-avg"></i>Average</span>
+                        <span><i class="lg-swatch lg-low"></i>Lowest</span>
                         <span><i class="lg-swatch lg-target"></i>Your target</span>
                     </div>
                 </div>

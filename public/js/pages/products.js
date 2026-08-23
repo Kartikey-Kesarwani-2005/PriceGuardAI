@@ -67,7 +67,7 @@ async function loadProducts(category) {
         console.error('Error loading products:', err);
         if (grid) grid.innerHTML = `
             <div class="state-card error-state">
-                <h4>Couldn't load products</h4>
+                <h4>Price verification is temporarily unavailable.</h4>
                 <p>The tracking engine may be offline. Check your connection and retry.</p>
                 <button class="mini-btn mb-primary" onclick="location.reload()">Try again</button>
             </div>`;
@@ -197,11 +197,11 @@ if (compareBtn) {
         if (ids.length < 2) return;
 
         compareModal.classList.remove('hidden');
-        compareBody.innerHTML = '<div class="loading">Loading comparison...</div>';
+        compareBody.innerHTML = Layout.loadphrase('Comparing stores…', 'Verifying price data…');
 
         const data = await fetchCompare(ids);
         if (!data || !data.products || !data.products.length) {
-            compareBody.innerHTML = '<div class="error">Failed to load comparison data</div>';
+            compareBody.innerHTML = '<div class="state-card error-state"><p>Price verification is temporarily unavailable.</p><button class="mini-btn mb-primary" onclick="compareBtn.click()">Try again</button></div>';
             return;
         }
 

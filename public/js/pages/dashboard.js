@@ -52,14 +52,17 @@ function wireHero() {
 async function loadAIStatus() {
     const el = $id('aiStatus');
     if (!el) return;
+    const stores = [...new Set(PRODUCTS.map(p => p.store).filter(Boolean))];
+    const storeTxt = stores.length ? stores.join(' · ') : 'Amazon · Flipkart · Croma';
     try {
         const mode = await jget('/api/mode');
-        const label = mode.demo
-            ? 'Demo intelligence active'
-            : (mode.refreshing ? 'Live refresh running…' : 'Live tracking active');
-        el.innerHTML = `<i class="pulse-dot"></i>${Intel.esc(label)} · ${PRODUCTS.length || '—'} products · watching for drops`;
+        const label = mode.demo ? 'Demo feed' : (mode.refreshing ? 'Refreshing now' : 'Monitoring prices');
+        el.innerHTML = `<span class="hm-live"><i></i>${Intel.esc(label)}</span>` +
+            `<span class="hm-stores">${Intel.esc(storeTxt)}</span>` +
+            (PRODUCTS.length ? `<span class="hm-stores">${PRODUCTS.length} products</span>` : '');
     } catch (e) {
-        el.innerHTML = '<i class="pulse-dot warn"></i>Engine status unknown — retrying soon';
+        el.innerHTML = `<span class="hm-live"><i></i>Status unknown</span>` +
+            `<span class="hm-stores">${Intel.esc(storeTxt)}</span>`;
     }
 }
 
@@ -92,8 +95,8 @@ async function intelFlow() {
     try {
         PRODUCTS = await jget('/api/products');
     } catch (err) {
-        ['dealsGrid', 'buywaitRail', 'storeCompare'].forEach(id =>
-            secFail(id, 'Could not reach the tracking engine.', intelFlow));
+        ['dealsLayout', 'buywaitRail', 'storeCompare'].forEach(id =>
+            secFail(id, 'Price verification is temporarily unavailable.', intelFlow));
         fillBaseStats();
         return;
     }
@@ -107,7 +110,7 @@ async function intelFlow() {
     loadAIStatus();
 
     if (!scored.length) {
-        $id('dealsGrid').innerHTML = `
+        $id('dealsLayout').innerHTML = `
             <div class="state-card">
                 <h4>No tracked prices yet</h4>
                 <p>Add a product and PriceGuard will start scoring deals automatically.</p>
@@ -116,6 +119,7 @@ async function intelFlow() {
         $id('buywaitRail').innerHTML = '';
         $id('storeCompare').innerHTML = '';
         renderHealth();
+        renderPriceMonitor();
         return;
     }
 
@@ -133,12 +137,13 @@ async function intelFlow() {
 
     fillBaseStats(enriched[0].s);
 
-    /* 2 · Today's best deals */
-    const dealsBox = $id('dealsGrid');
-    if (dealsBox) {
-        dealsBox.innerHTML = enriched.map(x =>
-            buildProductCard(x.p, { history: HIST[x.p.id] })
-        ).join('');
+    /* 2 · Today's best deals — one dominant opportunity, quiet support cards */
+    const oppBox = $id('oppSlot');
+    const supBox = $id('dealSupport');
+    if (oppBox) oppBox.innerHTML = buildOppCard(enriched[0].p, HIST[enriched[0].p.id]);
+    if (supBox) {
+        supBox.innerHTML = enriched.slice(1, 4).map(x => buildSupportCard(x.p, HIST[x.p.id])).join('') ||
+            '<div class="state-card slim"><p>More deals appear as prices are tracked.</p></div>';
     }
 
     /* 3+4 · spotlight */
@@ -154,8 +159,101 @@ async function intelFlow() {
 
     /* 7 · stores */
     loadStores();
+    /* price monitor (self-healing) */
+    renderPriceMonitor();
     /* 8 · data health */
     renderHealth();
+}
+
+/* ---------- 2 · dominant opportunity + supporting cards ---------- */
+
+function histStats(hist) {
+    if (!hist || !hist.points || hist.points.length < 2) return null;
+    const prices = hist.points.map(x => x.price);
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const lo = Math.min.apply(null, prices);
+    return { avg, lo, belowPct: Math.round((avg - prices[prices.length - 1]) / avg * 100) };
+}
+
+function trustLabel(p) {
+    const f = Intel.freshness(p);
+    return f.label;
+}
+
+function buildOppCard(p, hist) {
+    const vd = Intel.verdict(p, hist);
+    const score = Intel.dealScore(p, hist);
+    const st = histStats(hist);
+    const detailsHref = 'product-details.html?id=' + encodeURIComponent(p.id);
+    const glyph = Layout.icons[Intel.catGlyph(p.category)] || Layout.icons.box;
+    const mrp = p.originalPrice && p.originalPrice > p.price ? `<s class="opp-mrp">${Intel.fmtCompact(p.originalPrice)}</s>` : '';
+
+    let drop = '';
+    if (st && st.belowPct !== 0) {
+        const down = st.belowPct > 0;
+        drop = `<em class="opp-drop">${down ? '↓' : '↑'} ${Math.abs(st.belowPct)}% below average</em>`;
+    } else if (st) {
+        drop = `<em class="opp-drop">at 30-day average</em>`;
+    }
+
+    const lowNote = st && p.price && p.price <= st.lo * 1.02
+        ? 'Current price is close to the historical low.' : '';
+    const reason = [vd.reason.charAt(0).toUpperCase() + vd.reason.slice(1), lowNote]
+        .filter(Boolean).join(' ');
+
+    return `
+    <article class="opp-card" data-pid="${Intel.esc(p.id)}">
+        <div class="opp-head">
+            <span class="opp-kicker">Best opportunity</span>
+            <span class="opp-trust"><i></i>${Intel.esc(trustLabel(p))}</span>
+        </div>
+        <div class="opp-body">
+            <span class="opp-glyph" aria-hidden="true">${glyph}</span>
+            <h3 class="opp-name"><a href="${detailsHref}">${Intel.esc(p.name)}</a></h3>
+            <div class="opp-store">${Intel.esc(p.store)}</div>
+            <div class="opp-price-row">
+                <span class="opp-price">${formatPrice(p.price)}</span>
+                ${mrp}
+                ${drop}
+            </div>
+            <div class="opp-verdict">
+                ${Intel.scoreRing(score)}
+                <span class="opp-vd-txt">
+                    <span class="opp-buy">${vd.buy ? Layout.icons.shield.replace('<svg', '<svg aria-hidden="true"') : ''}${vd.buy ? 'Good time to buy' : Intel.esc(vd.label)}</span>
+                    <p class="opp-reason">${Intel.esc(reason || vd.reason)}</p>
+                </span>
+            </div>
+            <div class="opp-foot">
+                <a class="foot-link" href="${detailsHref}">Full history ${Layout.icons.arrowRight}</a>
+                <a class="foot-ghost" href="products.html?cat=${encodeURIComponent(p.category)}&preselect=${encodeURIComponent(p.id)}">Compare stores ${Layout.icons.arrowRight}</a>
+            </div>
+        </div>
+    </article>`;
+}
+
+function buildSupportCard(p, hist) {
+    const vd = Intel.verdict(p, hist);
+    const st = histStats(hist);
+    const detailsHref = 'product-details.html?id=' + encodeURIComponent(p.id);
+    const glyph = Layout.icons[Intel.catGlyph(p.category)] || Layout.icons.box;
+    let drop = '';
+    if (st && st.belowPct !== 0) {
+        const down = st.belowPct > 0;
+        drop = `<em class="${down ? 'pd-down' : 'pd-up'}">${down ? '↓' : '↑'} ${Math.abs(st.belowPct)}%</em>`;
+    }
+    (window.__PGCARDS__ = window.__PGCARDS__ || {})[p.id] = p;
+    return `
+    <a class="support-card" href="${detailsHref}">
+        <span class="sc-glyph g${Intel.gradIndex(p.category || p.id)}" aria-hidden="true">${glyph}</span>
+        <span class="sc-main">
+            <span class="sc-name">${Intel.esc(p.name)}</span>
+            <span class="sc-meta">${Intel.esc(p.store)}${drop ? ` · ${drop}` : ''}</span>
+        </span>
+        <span class="sc-side">
+            <span class="sc-price">${formatPrice(p.price)}</span>
+            <span class="verdict-pill sc-pill ${vd.tone || (vd.buy ? 'v-buy' : 'v-wait')}">${Intel.esc(vd.label)}</span>
+        </span>
+    </a>`;
 }
 
 function bwTile(p) {
@@ -190,6 +288,7 @@ function drawSpotChart(p) {
 
     let lo = Infinity, hi = -Infinity;
     pts.forEach(pt => { lo = Math.min(lo, pt.price); hi = Math.max(hi, pt.price); });
+    const lo0 = lo;   /* raw tracked minimum, before axis padding */
     const target = p.target;
     if (target) { lo = Math.min(lo, target); hi = Math.max(hi, target); }
     const padY = (hi - lo) * 0.08 || hi * 0.05 || 1;
@@ -232,16 +331,33 @@ function drawSpotChart(p) {
             `<text x="${P.l + 4}" y="${(close ? ty + 13 : ty - 5).toFixed(1)}" class="target-label">TARGET ${Intel.fmtCompact(target)}</text>`;
     }
 
+    /* lowest tracked price marker */
+    let lowMark = '';
+    const loIdx = prices.indexOf(lo0);
+    if (loIdx !== -1) {
+        const lx = X(loIdx), ly = Y(lo0);
+        const closeToAvg = Math.abs(ly - avgY) < 15;
+        lowMark =
+            `<line x1="${P.l}" x2="${W - P.r}" y1="${ly.toFixed(1)}" y2="${ly.toFixed(1)}" class="lowest-line"/>` +
+            `<text x="${P.l + 4}" y="${(closeToAvg ? ly + 13 : ly - 5).toFixed(1)}" class="lowest-label">LOW ${Intel.fmtCompact(lo0)}</text>` +
+            `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" class="low-dot"/>`;
+    }
+    /* current price dot */
+    const lastPt = pts[n - 1];
+    const nowMark = `<circle cx="${X(n - 1).toFixed(1)}" cy="${Y(lastPt.price).toFixed(1)}" r="4.5" class="now-dot"/>`;
+
     host.innerHTML = `
         <svg viewBox="0 0 ${W} ${H}" class="spot-svg" preserveAspectRatio="none" role="img" aria-label="Price trend chart">
             <defs><linearGradient id="spFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#6366f1" stop-opacity="0.30"/>
-                <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+                <stop offset="0%" stop-color="#17221E" stop-opacity="0.10"/>
+                <stop offset="100%" stop-color="#17221E" stop-opacity="0"/>
             </linearGradient></defs>
             <g>${grid}${xt}</g>
             <path d="${areaD}" fill="url(#spFill)"/>
             ${overlays}
-            <path d="${lineD}" class="price-line"/>
+            ${lowMark}
+            <path d="${lineD}" class="price-line animatable" pathLength="1"/>
+            ${nowMark}
         </svg>`;
 }
 
@@ -350,7 +466,7 @@ async function loadAlertsPrev() {
     }
 }
 
-/* ---------- 7 · store comparison ---------- */
+/* ---------- 7 · store comparison — typographic ledger ---------- */
 
 function loadStores() {
     const box = $id('storeCompare');
@@ -381,15 +497,60 @@ function loadStores() {
     }
 
     const maxDisc = Math.max.apply(null, rows.map(r => r.avgDisc)) || 1;
-    box.innerHTML = rows.map(r => `
-        <div class="store-tile">
-            <div class="st-top"><strong>${Intel.esc(r.name)}</strong><span class="st-count">${r.n} products</span></div>
-            <div class="st-bar"><i style="width:${Math.max(6, r.avgDisc / maxDisc * 100)}%"></i></div>
-            <div class="st-meta">
-                <span>Avg discount <b>${r.avgDisc}%</b></span>
-                <span>In stock <b>${r.avail}%</b></span>
-            </div>
+    box.innerHTML = rows.map((r, i) => `
+        <div class="sl-row">
+            <span class="sl-rank">${String(i + 1).padStart(2, '0')}</span>
+            <span class="sl-name">${Intel.esc(r.name)}</span>
+            ${i === 0 ? '<span class="sl-best">Best value</span>' : ''}
+            <span class="sl-dots"><i class="${i === 0 ? 'best' : ''}" style="width:${Math.max(6, r.avgDisc / maxDisc * 100)}%"></i></span>
+            <span class="sl-price ${i === 0 ? 'best' : ''}">−${r.avgDisc}%</span>
+            <span class="sl-sub">${r.avail}% in stock</span>
         </div>`).join('');
+}
+
+/* ---------- self-healing price monitor ---------- */
+
+async function renderPriceMonitor() {
+    const box = $id('priceMonitor');
+    if (!box) return;
+    try {
+        const res = await fetch('/api/health');
+        if (!res.ok) throw new Error('unavailable');
+        const data = await res.json();
+
+        const stores = Object.keys(data.stores || {}).sort();
+        if (!stores.length) {
+            box.innerHTML = '<div class="state-card slim"><p>No store activity recorded yet.</p></div>';
+            return;
+        }
+
+        box.innerHTML = stores.map(name => {
+            const s = data.stores[name] || {};
+            const rate = typeof s.successRate === 'number' ? s.successRate : null;
+            let cls = 'ok', label = 'Healthy', note = '';
+            if (rate !== null && rate < 60 && s.heals > 0) {
+                cls = 'rec'; label = 'Recovered'; note = 'Recovered automatically';
+            } else if (rate !== null && rate < 60) {
+                cls = 'warn'; label = 'Attention'; note = 'Repairs are being attempted';
+            } else if (s.heals > 0) {
+                cls = 'rec'; label = 'Recovered'; note = 'Recovered automatically · now healthy';
+            }
+            if (data.mode === 'demo') note = note || 'Demo feed';
+            return `
+            <div class="mon-row">
+                <span class="mon-store">${Intel.esc(name)}</span>
+                <span class="mon-status ${cls}"><i></i>${label}</span>
+                <span class="mon-note">${Intel.esc(note || (rate === null ? 'Awaiting first check' : rate + '% checks successful'))}</span>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        box.innerHTML = `
+            <div class="state-card error-state">
+                <p>Price verification is temporarily unavailable.</p>
+                <button class="mini-btn mb-primary" data-retry="retry_priceMonitor">Try again</button>
+            </div>`;
+        RETRY.retry_priceMonitor = renderPriceMonitor;
+    }
 }
 
 /* ---------- 8 · data health ---------- */
@@ -416,11 +577,11 @@ function renderHealth() {
 
     box.innerHTML = `
         <div class="dh-grid">
-            ${tile('t-live', live, 'live', 'Synced within the last few minutes')}
-            ${tile('t-recent', recent, 'recently updated', 'Fresh within the last day' + (demo ? ' (includes demo feed)' : ''))}
-            ${tile('t-stale', stale, 'stale', 'Older data - treat prices with care')}
+            ${tile('t-live', live, 'verified recently', 'Checked within the last hour')}
+            ${tile('t-recent', recent, 'verified today', 'Fresh within the last day' + (demo ? ' (includes demo feed)' : ''))}
+            ${tile('t-stale', stale, 'stale', 'Older data — last verified price is still available')}
         </div>
-        <p class="dh-note">Every price carries its freshness chip. Numbers marked stale may have moved since the last successful check.</p>
+        <p class="dh-note">Every number on this page carries its own verification time. When a scraper breaks, PriceGuard repairs it and marks recovered data explicitly.</p>
         <a class="see-all sm" href="scrapers.html">Advanced scraper monitors ${Layout.icons.arrowRight}</a>`;
 }
 

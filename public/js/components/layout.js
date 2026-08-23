@@ -1,4 +1,16 @@
 const Layout = {
+    /* meaningful loading state — rotating human phrases instead of skeletons */
+    loadphrase(...msgs) {
+        const list = Array.isArray(msgs[0]) ? msgs[0] : msgs;
+        return `<div class="loadphrase" role="status" aria-live="polite" data-phrases="${Layout.esc(list.join('|'))}"><span class="lp-msg">${Layout.esc(list[0])}</span><div class="lp-bar"><i></i></div></div>`;
+    },
+
+    esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    },
+
     icons: {
         home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21V12h6v9"/></svg>',
         compare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>',
@@ -49,8 +61,8 @@ const Layout = {
             <div class="sidebar-bottom">
                 <a href="settings.html" class="nav-item nav-settings">${this.icons.settings}<span>Settings</span></a>
                 <div class="system-status">
-                    <div class="status-title"><span class="status-dot"></span>AI engine active</div>
-                    <p>Tracking prices across your stores in real time.</p>
+                    <div class="status-title"><span class="status-dot"></span>Monitoring prices</div>
+                    <p>Amazon, Flipkart &amp; Croma are checked on a fixed rhythm — around the clock.</p>
                 </div>
             </div>
         </aside>`;
@@ -100,7 +112,7 @@ const Layout = {
         return `
         <header class="header">
             <button class="mobile-menu" id="openSidebar" aria-label="Open menu">${this.icons.menu}</button>
-            <div class="search-box">${this.icons.search}<input type="text" id="globalSearch" placeholder="Search products..." autocomplete="off"><span class="kbd">/</span></div>
+            <div class="search-box">${this.icons.search}<input type="text" id="globalSearch" placeholder="Search a product…" autocomplete="off"><span class="kbd">/</span></div>
             <div class="header-right">
                 <a class="icon-btn" href="settings.html" title="Settings" aria-label="Settings">${this.icons.settings}</a>
                 <button class="notification-button" id="notificationBtn" title="Alerts" aria-label="Alerts">${this.icons.bell}<span class="notification-dot"></span></button>
@@ -143,3 +155,25 @@ const Layout = {
         </div>`;
     }
 };
+
+/* keep every .loadphrase rotating its human phrases until real content replaces it */
+(function () {
+    function wire(root) {
+        (root || document).querySelectorAll('.loadphrase:not([data-wired])').forEach(el => {
+            el.setAttribute('data-wired', '1');
+            const list = (el.dataset.phrases || '').split('|').filter(Boolean);
+            if (list.length < 2) return;
+            const msg = el.querySelector('.lp-msg');
+            let i = 0;
+            const t = setInterval(() => {
+                if (!document.contains(el)) { clearInterval(t); return; }
+                i = (i + 1) % list.length;
+                if (msg) msg.textContent = list[i];
+            }, 1900);
+        });
+    }
+    wire();
+    new MutationObserver(muts => {
+        for (const m of muts) if (m.addedNodes && m.addedNodes.length) { wire(document); break; }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+})();

@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="PriceGuard AI - Know the price. Know the moment.">
-    <meta name="theme-color" content="#04060c">
-    <title>PriceGuard AI - Price Intelligence</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236366f1'/%3E%3Cstop offset='.55' stop-color='%238b5cf6'/%3E%3Cstop offset='1' stop-color='%23d946ef'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='24' height='24' rx='6' fill='%23070b14'/%3E%3Cpath d='M18.5 8.6c0 4.6-3.1 6.9-6 8.2a.9.9 0 0 1-.7 0c-2.9-1.3-6-3.6-6-8.2V4.9c0-.4.4-.8.8-.8 1.7 0 3.7-1 5-2.2a.9.9 0 0 1 1.2 0c1.4 1.2 3.3 2.2 5 2.2.4 0 .7.4.7.8z' fill='url(%23g)'/%3E%3Cpath d='m9.2 11.6 2 2 3.6-3.6' stroke='%23fff' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <meta name="theme-color" content="#F6F4EF">
+    <title>PriceGuard — Price Intelligence</title>
+    <link rel='icon' type='image/svg+xml' href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%2314211B'/%3E%3Cpath d='M18.5 8.6c0 4.6-3.1 6.9-6 8.2a.9.9 0 0 1-.7 0c-2.9-1.3-6-3.6-6-8.2V4.9c0-.4.4-.8.8-.8 1.7 0 3.7-1 5-2.2a.9.9 0 0 1 1.2 0c1.4 1.2 3.3 2.2 5 2.2.4 0 .7.4.7.8z' fill='%233FA37E'/%3E%3Cpath d='m9.2 11.6 2 2 3.6-3.6' stroke='%23EFF4F0' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -19,45 +19,55 @@
     <script>
         document.getElementById('app').innerHTML = Layout.renderPage('home', '', '', `
 
-            <!-- 1 · SMART SEARCH HERO -->
+            <!-- HERO -->
             <div class="hero">
+                <svg class="hero-signal" viewBox="0 0 860 120" aria-hidden="true">
+                    <path d="M10 92 C 90 88, 130 60, 200 66 S 320 96, 400 78 S 540 30, 620 42 S 760 20, 850 14"/>
+                    <circle cx="850" cy="14" r="3"/>
+                </svg>
                 <div class="hero-inner">
-                    <span class="hero-eyebrow">${Layout.icons.spark}AI Price Intelligence</span>
+                    <span class="hero-eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.2 2.2M16.2 16.2l2.2 2.2M18.4 5.6l-2.2 2.2M7.8 16.2l-2.2 2.2"/><circle cx="12" cy="12" r="3.2"/></svg>Price Intelligence</span>
                     <h1 class="hero-title">Know the Price.<br><span class="grad-text">Know the Moment.</span></h1>
-                    <p class="hero-sub">PriceGuard watches prices across your stores, learns their rhythm and tells you the exact moment buying stops being a gamble.</p>
+                    <p class="hero-sub">PriceGuard watches prices, verifies the data,<br>and helps you decide when to buy.</p>
 
                     <div class="hero-search" id="heroSearchBox">
-                        ${Layout.icons.search}
-                        <input type="text" id="heroSearch" placeholder="Search any product — iPhone 15, PS5, air conditioner…" autocomplete="off" aria-label="Search products">
-                        <button class="hero-go" id="heroGo">${Layout.icons.arrowRight}Analyse</button>
+                        
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        
+                        <input type="text" id="heroSearch" placeholder="Search a product, paste a product URL, or compare prices…" autocomplete="off" aria-label="Search products">
+                        <button class="hero-go" id="heroGo"><span>Analyse</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
                     </div>
 
-                    <div class="ai-status" id="aiStatus"><i class="pulse-dot"></i>Waking up the engine…</div>
+                    <div class="hero-monitor" id="aiStatus">
+                        <span class="hm-live"><i></i>Monitoring prices</span>
+                        <span class="hm-stores">Amazon &middot; Flipkart &middot; Croma</span>
+                    </div>
                     <div class="chip-row" id="popularChips"></div>
                 </div>
-                <div class="hero-glow" aria-hidden="true"></div>
             </div>
 
             <!-- key numbers -->
             <div class="stats-grid home-stats">
-                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Products tracked</p><h2 class="stat-value" id="stProducts">—</h2></div><div class="stat-icon">${Layout.icons.box}</div></div><div class="stat-bottom"><span class="stat-trend">Across all categories</span><span class="stat-description">Live monitoring</span></div></div>
-                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Top deal score</p><h2 class="stat-value" id="stScore">—</h2></div><div class="stat-icon">${Layout.icons.insights}</div></div><div class="stat-bottom"><span class="stat-trend">Computed just now</span><span class="stat-description">From live signals</span></div></div>
+                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Products tracked</p><h2 class="stat-value" id="stProducts">—</h2></div><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div></div><div class="stat-bottom"><span class="stat-trend">Across all categories</span><span class="stat-description">Live monitoring</span></div></div>
+                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Top deal score</p><h2 class="stat-value" id="stScore">—</h2></div><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 13 3-3 3 2 5-6"/></svg></div></div><div class="stat-bottom"><span class="stat-trend">Computed just now</span><span class="stat-description">From live signals</span></div></div>
                 <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Target hits</p><h2 class="stat-value" id="stHits">—</h2></div><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></svg></div></div><div class="stat-bottom"><span class="stat-trend">Ready to buy</span><span class="stat-description">At or below target</span></div></div>
-                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Active alerts</p><h2 class="stat-value" id="stAlerts">—</h2></div><div class="stat-icon">${Layout.icons.bell}</div></div><div class="stat-bottom"><span class="stat-trend">Needs attention</span><span class="stat-description">Prices &amp; stock moves</span></div></div>
+                <div class="stat-card"><div class="stat-top"><div><p class="stat-title">Active alerts</p><h2 class="stat-value" id="stAlerts">—</h2></div><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div></div><div class="stat-bottom"><span class="stat-trend">Needs attention</span><span class="stat-description">Prices &amp; stock moves</span></div></div>
             </div>
 
-            <!-- 2 · TODAY'S BEST DEALS -->
+            <!-- TODAY'S BEST DEALS -->
             <section class="dash-section">
                 <div class="section-head">
                     <div><span class="eyebrow">Today's best</span><h3>Deals worth your attention</h3></div>
-                    <a class="see-all" href="products.html">Browse all ${Layout.icons.arrowRight}</a>
+                    <a class="see-all" href="products.html">Browse all <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
                 </div>
-                <div class="cards-grid" id="dealsGrid">
-                    <div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div><div class="skel pcard-skel"></div>
+                <div class="deals-layout" id="dealsLayout">
+                    <div id="oppSlot" style="min-height:340px"><div class="loadphrase" role="status" aria-live="polite" data-phrases="Checking current prices…|Comparing stores…|Verifying price data…"><span class="lp-msg">Checking current prices…</span><div class="lp-bar"><i></i></div></div></div>
+                    <div class="deal-support" id="dealSupport"></div>
                 </div>
+                <div id="dealsGrid"></div>
             </section>
 
-            <!-- 3 + 4 · PRICE INTELLIGENCE SPOTLIGHT & HISTORY -->
+            <!-- PRICE INTELLIGENCE SPOTLIGHT & HISTORY -->
             <section class="dash-section">
                 <div class="section-head">
                     <div><span class="eyebrow">Price intelligence</span><h3>The moment, decoded</h3></div>
@@ -68,33 +78,42 @@
                 </div>
             </section>
 
-            <!-- 5 · BUY / WAIT AI -->
+            <!-- BUY / WAIT -->
             <section class="dash-section">
                 <div class="section-head">
-                    <div><span class="eyebrow">Buy / Wait AI</span><h3>Should you buy it today?</h3></div>
+                    <div><span class="eyebrow">Buy / Wait</span><h3>Should you buy it today?</h3></div>
                 </div>
-                <div class="rail" id="buywaitRail"><div class="skel block-skel"></div><div class="skel block-skel"></div><div class="skel block-skel"></div><div class="skel block-skel"></div></div>
+                <div class="rail" id="buywaitRail"><div class="loadphrase" role="status" aria-live="polite" data-phrases="Checking historical trends…"><span class="lp-msg">Checking historical trends…</span><div class="lp-bar"><i></i></div></div></div>
             </section>
 
-            <!-- 6 · PRICE ALERTS PREVIEW -->
+            <!-- PRICE ALERTS PREVIEW -->
             <section class="dash-section">
                 <div class="section-head">
                     <div><span class="eyebrow">Price alerts</span><h3>What changed today</h3></div>
-                    <a class="see-all" href="alerts.html">All alerts ${Layout.icons.arrowRight}</a>
+                    <a class="see-all" href="alerts.html">All alerts <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
                 </div>
-                <div class="alerts-preview" id="alertsPreview"><div class="skel row-skel"></div><div class="skel row-skel"></div><div class="skel row-skel"></div></div>
+                <div class="alerts-preview" id="alertsPreview"><div class="loadphrase" role="status" aria-live="polite" data-phrases="Preparing your price insight…"><span class="lp-msg">Preparing your price insight…</span><div class="lp-bar"><i></i></div></div></div>
             </section>
 
-            <!-- 7 · STORE COMPARISON -->
+            <!-- STORE COMPARISON -->
             <section class="dash-section">
                 <div class="section-head">
                     <div><span class="eyebrow">Store comparison</span><h3>Where the deals live</h3></div>
-                    <a class="see-all" href="scrapers.html">Deep dive ${Layout.icons.arrowRight}</a>
+                    <a class="see-all" href="scrapers.html">Deep dive <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
                 </div>
-                <div class="store-grid" id="storeCompare"><div class="skel block-skel"></div><div class="skel block-skel"></div><div class="skel block-skel"></div></div>
+                <div class="store-ledger" id="storeCompare"><div class="loadphrase" role="status" aria-live="polite" data-phrases="Comparing stores…"><span class="lp-msg">Comparing stores…</span><div class="lp-bar"><i></i></div></div></div>
             </section>
 
-            <!-- 8 · ADVANCED · DATA HEALTH -->
+            <!-- PRICE MONITOR (self-healing) -->
+            <section class="dash-section">
+                <div class="section-head">
+                    <div><span class="eyebrow">Self-healing monitor</span><h3>Every store, watched</h3></div>
+                    <a class="see-all" href="scrapers.html">Advanced insights <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+                </div>
+                <div class="monitor-strip" id="priceMonitor"><div class="loadphrase" role="status" aria-live="polite" data-phrases="Verifying price data…"><span class="lp-msg">Verifying price data…</span><div class="lp-bar"><i></i></div></div></div>
+            </section>
+
+            <!-- ADVANCED · DATA HEALTH -->
             <details class="adv-wrap" id="dataHealth">
                 <summary>
                     <span class="eyebrow adv-eyebrow">Advanced</span>

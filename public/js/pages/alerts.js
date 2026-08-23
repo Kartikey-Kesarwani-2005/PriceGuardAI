@@ -7,7 +7,7 @@ function showCaughtUp(show) {
 
 async function renderAlerts() {
     if (!alertsList) return;
-    alertsList.innerHTML = '<div class="loading">Loading alerts...</div>';
+    alertsList.innerHTML = Layout.loadphrase('Fetching notifications…', 'Checking price moves…');
     showCaughtUp(false);
 
     try {
@@ -38,7 +38,7 @@ async function renderAlerts() {
         });
     } catch (err) {
         showCaughtUp(false);
-        alertsList.innerHTML = '<div class="error">Error loading alerts</div>';
+        alertsList.innerHTML = '<div class="state-card error-state"><p>Notifications are temporarily unreachable.</p><button class="mini-btn mb-primary" onclick="renderAlerts()">Try again</button></div>';
     }
 }
 

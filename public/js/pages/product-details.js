@@ -57,7 +57,7 @@ async function loadHistory(range) {
         if (!res.ok) throw new Error('Failed to load history');
         historyData = await res.json();
     } catch (err) {
-        if (wrap) wrap.innerHTML = '<div class="error">Could not load price history</div>';
+        if (wrap) wrap.innerHTML = '<div class="state-card error-state"><p>Price history is temporarily unavailable.</p><button class="mini-btn mb-primary" onclick="location.reload()">Try again</button></div>';
         const ip = document.getElementById('intelPanel');
         if (ip) ip.innerHTML = '<div class="state-card slim"><p>Deal intelligence unavailable for this product right now.</p></div>';
         return;
@@ -367,18 +367,34 @@ function drawChart() {
             `<text x="${P.l + 4}" y="${ly.toFixed(1)}" class="target-label">TARGET ${fmtCompact(target)}</text>`;
     }
 
+    /* lowest tracked price marker */
+    const rawPrices = pts.map(pt => pt.price);
+    const lo0 = Math.min.apply(null, rawPrices);
+    let lowMark = '';
+    if (historyData.summary.lowest > 0 && lo0 === historyData.summary.lowest) {
+        const li = rawPrices.indexOf(lo0);
+        const lx = X(li), ly = Y(lo0);
+        const closeToAvg = Math.abs(ly - avgY) < 15;
+        lowMark =
+            `<line x1="${P.l}" x2="${W - P.r}" y1="${ly.toFixed(1)}" y2="${ly.toFixed(1)}" class="lowest-line"/>` +
+            `<text x="${P.l + 4}" y="${(closeToAvg ? ly + 13 : ly - 5).toFixed(1)}" class="lowest-label">LOW ${fmtCompact(lo0)}</text>` +
+            `<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="4" class="low-dot"/>`;
+    }
+
     wrap.innerHTML = `
         <svg viewBox="0 0 ${W} ${H}" class="spot-svg" preserveAspectRatio="none" id="histSvg">
             <defs>
                 <linearGradient id="pgFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#6366f1" stop-opacity="0.32"/>
-                    <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+                    <stop offset="0%" stop-color="#17221E" stop-opacity="0.10"/>
+                    <stop offset="100%" stop-color="#17221E" stop-opacity="0"/>
                 </linearGradient>
             </defs>
             <g>${grid}${xticks}</g>
             <path d="${areaD}" fill="url(#pgFill)"/>
             ${overlays}
-            <path d="${lineD}" class="price-line"/>
+            ${lowMark}
+            <path d="${lineD}" class="price-line animatable" pathLength="1"/>
+            <circle cx="${X(n - 1).toFixed(1)}" cy="${Y(pts[n - 1].price).toFixed(1)}" r="4.5" class="now-dot"/>
             <line id="hoverX" class="hover-x" y1="${P.t}" y2="${(P.t + ih).toFixed(1)}" opacity="0"/>
             <circle id="hoverDot" r="4.5" class="hover-dot" opacity="0"/>
             <rect x="${P.l}" y="${P.t}" width="${iw}" height="${ih}" fill="transparent" id="hitArea"/>

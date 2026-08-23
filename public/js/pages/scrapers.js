@@ -116,7 +116,7 @@ function renderScraperList(products) {
     scraperList.innerHTML = '';
 
     if (products.length === 0) {
-        scraperList.innerHTML = '<div class="loading">No products found</div>';
+        scraperList.innerHTML = '<div class="state-card slim"><p>No tracked products yet — add one from the Compare page.</p></div>';
         return;
     }
 
@@ -181,7 +181,7 @@ async function renderScrapers() {
         allScraperProducts = await fetchProducts();
         renderScraperList(allScraperProducts);
     } catch (err) {
-        scraperList.innerHTML = `<div class="error">Error loading scraper data: ${err.message}</div>`;
+        scraperList.innerHTML = '<div class="state-card error-state"><p>Scraper monitors are temporarily unreachable.</p><button class="mini-btn mb-primary" onclick="renderScrapers()">Try again</button></div>';
     }
 }
 

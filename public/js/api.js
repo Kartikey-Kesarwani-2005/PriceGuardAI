@@ -96,14 +96,18 @@ const Intel = {
         return Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
     },
 
-    /* data freshness from real tracking fields */
+    /* data trust from real tracking fields — plain words, no badge soup */
     freshness(p) {
-        if (p.error || p.stale) return { label: 'Stale feed', cls: 'stale' };
-        if (!p.lastChecked) return { label: 'Never synced', cls: 'stale' };
+        if (p._source === 'live-healed' && !p.error) return { label: 'Recovered automatically', cls: 'recent' };
+        if (p.error || p.stale) return { label: 'Last verified long ago', cls: 'stale' };
+        if (!p.lastChecked) return { label: 'Never verified', cls: 'stale' };
         if (p._source === 'demo') return { label: 'Demo feed', cls: 'demo' };
-        const ageMin = (Date.now() - new Date(p.lastChecked).getTime()) / 60000;
-        if (ageMin < 15) return { label: 'Live', cls: 'live' };
-        if (ageMin < 1440) return { label: 'Recently updated', cls: 'recent' };
+        const ageSec = (Date.now() - new Date(p.lastChecked).getTime()) / 1000;
+        if (ageSec < 60) return { label: 'Verified ' + Math.max(1, Math.round(ageSec)) + ' sec ago', cls: 'live' };
+        const ageMin = Math.round(ageSec / 60);
+        if (ageMin < 60) return { label: 'Verified ' + ageMin + ' min ago', cls: 'live' };
+        const hrs = Math.round(ageMin / 60);
+        if (hrs < 24) return { label: 'Last verified ' + hrs + 'h ago', cls: 'recent' };
         return { label: 'Stale feed', cls: 'stale' };
     },
 
@@ -268,15 +272,18 @@ const Intel = {
     },
 
     scoreRing(score) {
-        const C = 94.25;               /* circumference for r=15 */
-        const filled = (Math.max(0, Math.min(100, score)) / 100 * C).toFixed(1);
+        const filled = Math.max(0, Math.min(100, score));
+        const offset = (100 - filled).toFixed(1);
         return `
-        <span class="score-ring ${this.scoreTone(score)}">
-            <svg viewBox="0 0 36 36" width="38" height="38" aria-hidden="true">
-                <circle cx="18" cy="18" r="15" fill="none" stroke-width="3.4" class="ring-track"/>
-                <circle cx="18" cy="18" r="15" fill="none" stroke-width="3.4" stroke-linecap="round"
-                    class="ring-fill" stroke-dasharray="${filled} ${C.toFixed(2)}"
-                    transform="rotate(-90 18 18)"/>
+        <span class="score-ring ${this.scoreTone(score)}" role="img" aria-label="Deal score ${score} out of 100">
+            <svg viewBox="0 0 40 40" aria-hidden="true">
+                <circle cx="20" cy="20" r="16.5" fill="none" stroke-width="1" class="ring-track"
+                    stroke-dasharray="0.6 2.2" transform="rotate(-90 20 20)"/>
+                <circle cx="20" cy="20" r="13.4" fill="none" stroke-width="2.6" class="ring-track"/>
+                <circle cx="20" cy="20" r="13.4" fill="none" stroke-width="2.6" stroke-linecap="round"
+                    class="ring-fill" pathLength="100"
+                    stroke-dasharray="100" stroke-dashoffset="${offset}"
+                    transform="rotate(-90 20 20)"/>
             </svg>
             <b>${score}</b>
         </span>`;
@@ -480,10 +487,9 @@ function buildProductCard(product, opts) {
     <article class="pcard${opts.compact ? ' compact' : ''}" data-pid="${intel.esc(p.id)}">
         ${select}
         ${watchBtn}
-        <a class="pcard-media g${intel.gradIndex(p.category || p.id)}" href="${detailsHref}" aria-hidden="true" tabindex="-1">
+        <a class="pcard-media g${intel.gradIndex(p.category || p.id)}" href="${detailsHref}" aria-label="Open ${intel.esc(p.name)} details" tabindex="-1">
             ${Layout.icons[intel.catGlyph(p.category)] || Layout.icons.box}
         </a>
-        ${disc > 0 ? `<span class="pcard-off">-${disc}%</span>` : ''}
         <div class="pcard-body">
             <div class="pcard-toprow">
                 <span class="pcard-store"><i class="store-dot"></i>${intel.esc(p.store)}</span>
