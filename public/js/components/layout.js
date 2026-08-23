@@ -114,6 +114,7 @@ const Layout = {
         return `
         <header class="header">
             <button class="mobile-menu" id="openSidebar" aria-label="Open menu">${this.icons.menu}</button>
+            <button class="icon-btn sidebar-toggle" id="sidebarToggle" title="Toggle menu" aria-label="Toggle menu" aria-expanded="true">${this.icons.menu}</button>
             <div class="search-box">${this.icons.search}<input type="text" id="globalSearch" placeholder="Search a product…" autocomplete="off"><span class="kbd">/</span></div>
             <div class="header-right">
                 <a class="icon-btn" href="settings.html" title="Settings" aria-label="Settings">${this.icons.settings}</a>

@@ -14,6 +14,20 @@ if (closeSidebar) {
     });
 }
 
+const sidebarToggle = document.getElementById('sidebarToggle');
+if (sidebarToggle && sidebar) {
+    let hidden = false;
+    try { hidden = localStorage.getItem('pg_sidebar_hidden') === '1'; } catch (e) { /* ignore */ }
+    if (hidden) document.body.classList.add('sidebar-hidden');
+    sidebarToggle.setAttribute('aria-expanded', String(!hidden));
+
+    sidebarToggle.addEventListener('click', () => {
+        const nowHidden = document.body.classList.toggle('sidebar-hidden');
+        sidebarToggle.setAttribute('aria-expanded', String(!nowHidden));
+        try { localStorage.setItem('pg_sidebar_hidden', nowHidden ? '1' : '0'); } catch (e) { /* ignore */ }
+    });
+}
+
 const notificationBtn = document.getElementById('notificationBtn');
 if (notificationBtn) {
     notificationBtn.addEventListener('click', () => {
